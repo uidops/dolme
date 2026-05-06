@@ -1,68 +1,120 @@
-# THE DOLME PROGRAMMING LANGUAGE
+# Dolme Programming Language
 
 <p align="center">
 <img src="https://github.com/uidops/uidops/blob/main/Dolmas+colour.jpg?raw=true">
 </p>
 
-DOLME is a student project for a programming language for compiler desiging course at Azarbaijan Shahid Madani University written in Go.
-The main goal of this project is to learn how to design and implement a programming language and its compiler.
-I used LL(1) parsing technique and Syntax-Directed Translation to implement the compiler.
+Dolme is a small programming language and compiler written in Go for a compiler design course at Azarbaijan Shahid Madani University. The project is built around an LL(1) parser, syntax-directed translation, a three-address-code IR, an interpreter, and an ARM64 macOS assembly backend.
 
-Currently arm64-macos are supported for assembly generation.
+The goal is educational: implement the core pieces of a compiler in a readable codebase, then validate interpreter and compiled behavior against the same example programs.
 
-Professor provided us with a simple grammar and we extended it to support more features like functions and some operations.
+## Features
 
-The main grammer and problem of the professor can be found in `dolme.pdf`
+- `int`, `float`, and `bool` values
+- Variable declarations with `let`
+- Arithmetic, comparison, and boolean operators
+- `if` / `else`
+- `while`, `break`, and `continue`
+- Functions with typed parameters and return values
+- Recursive and nested function calls
+- Interpreter mode for running IR directly
+- Native compilation to ARM64 macOS assembly
 
-Context-Free Grammar of DOLME and LL(1) Parsing table can be found in `dolme.md`
+## Example
 
-
-
-## Example:
 ```js
-func pow(a: float, b: int): float {
-    let c : float = 1.0;
-    while (b > 0) {
-        c = c * a;
-        b = b - 1;
-    }
-    return c;
-}
-
-func factorial(a: int): float {
-    let c : float = 1.0;
-    while (a > 0) {
-        c = c * a;
-        a = a - 1;
-    }
-    return c;
-}
-
-
-func sin(x: float): float {
-    let y : float = x;
-    let e : int = 3;
-    let i : int = 1;
-
-    while (i < 50) {
-        y = y + (pow(-1.0, i) * (pow(x, e) / factorial(e)));
-        e = e + 2;
-        i = i + 1;
+func fib(n: int): int {
+    if (n <= 1) {
+        return n;
     }
 
-    return y;
+    return fib(n - 1) + fib(n - 2);
 }
 
-let b : float = sin(4.4249);
-print(b);
+let result: int = fib(8);
+print(result);
 ```
 
-## Usage:
+## Build
+
 ```bash
-$ make # or go build -o bin/dolme cmd/main.go
-$ bin/dolme -h
-$ bin/dolme -v examples/01.dolme # too see generated IR code
-$ bin/dolme -r examples/01.dolme # run in interpreter mode
-$ bin/dolme -c -a arm64-macos examples/01.dolme # compile to binary
-$ bin/dolme -c -a arm64-macos -v examples/01.dolme # compiler to binary and show generated assembly
+make build
 ```
+
+or directly:
+
+```bash
+go build -o bin/dolme cmd/main.go
+```
+
+## Usage
+
+Show help:
+
+```bash
+bin/dolme -h
+```
+
+Run with the interpreter:
+
+```bash
+bin/dolme -r example/15_recursive_fibonacci.dolme
+```
+
+Compile to an ARM64 macOS binary:
+
+```bash
+bin/dolme -c -a arm64-macos -o out example/15_recursive_fibonacci.dolme
+./out
+```
+
+Print generated IR and assembly while compiling:
+
+```bash
+bin/dolme -c -a arm64-macos -v example/15_recursive_fibonacci.dolme
+```
+
+## Examples
+
+The `example/` directory contains small programs used as compiler regression cases, including:
+
+- Sine approximation with Taylor series
+- Mixed integer/float arithmetic and comparisons
+- Boolean logic
+- Nested function calls
+- Fibonacci, factorial, GCD, primality checking
+- Binary exponentiation
+- Newton square root approximation
+- Collatz steps
+- Russian peasant multiplication
+
+## Testing
+
+Run the full Go test suite:
+
+```bash
+go test -mod=readonly ./...
+```
+
+The integration test in `internal/compiler/examples_test.go` parses every `example/*.dolme` file, runs it through the interpreter, compiles it through the ARM64 macOS backend, runs the native binary, and compares both outputs with the expected output. The compiled-binary check runs only on `darwin/arm64`.
+
+## Project Layout
+
+- `cmd/`: command-line entry point
+- `internal/compiler/`: compile/run orchestration and example integration tests
+- `pkg/lexer/`: lexer and token definitions
+- `pkg/parser/`: LL(1) parser and parsing table
+- `pkg/parser/codegen/`: semantic actions and three-address-code IR generation
+- `pkg/parser/codegen/assembly/arm64/macos/`: ARM64 macOS assembly backend
+- `pkg/interpreter/`: IR interpreter
+- `example/`: Dolme programs used for manual testing and regression tests
+
+## Grammar
+
+The grammar and LL(1) parsing table are documented in `dolme.md`.
+
+The original course problem statement is kept separately as `dolme.pdf` when available.
+
+## Target Support
+
+Native compilation currently targets ARM64 macOS only (`-a arm64-macos`). Interpreter mode is portable anywhere Go can run.
