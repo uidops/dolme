@@ -1,0 +1,13 @@
+func fib(n: int): int {
+    if (n <= 1) {
+        return n;
+    }
+
+    return fib(n - 1) + fib(n - 2);
+}
+
+let f6: int = fib(6);
+let f8: int = fib(8);
+
+print(f6);
+print(f8);

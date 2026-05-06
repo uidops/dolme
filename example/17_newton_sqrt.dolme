@@ -1,0 +1,17 @@
+func sqrt_newton(x: float): float {
+    let guess: float = x;
+    let i: int = 0;
+
+    while (i < 8) {
+        guess = (guess + (x / guess)) / 2.0;
+        i = i + 1;
+    }
+
+    return guess;
+}
+
+let root2: float = sqrt_newton(2.0);
+let root4: float = sqrt_newton(4.0);
+
+print(root2);
+print(root4);

@@ -1,0 +1,46 @@
+func blend(a: float, b: int): float {
+    return a + (b * 2.0);
+}
+
+func int_math(a: int, b: int): int {
+    return (a + b) * (a - b);
+}
+
+let x: float = blend(2.5, 3);
+let y: int = int_math(7, 2);
+
+let gt: bool = true;
+let lt: bool = false;
+let eq: bool = false;
+let ne: bool = true;
+
+if (x > y) {
+    gt = true;
+} else {
+    gt = false;
+}
+
+if (x < y) {
+    lt = true;
+} else {
+    lt = false;
+}
+
+if (x == 8.5) {
+    eq = true;
+} else {
+    eq = false;
+}
+
+if (y != 45) {
+    ne = true;
+} else {
+    ne = false;
+}
+
+print(x);
+print(y);
+print(gt);
+print(lt);
+print(eq);
+print(ne);

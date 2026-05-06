@@ -1,0 +1,20 @@
+let a: int = 12;
+let b: int = 5;
+let c: int = (a + b) * 2 - 9;
+let d: int = c % 7;
+let ok: int = 100;
+let fail: int = 200;
+
+print(c);
+print(d);
+
+while (a > 8) {
+    print(a);
+    a = a - 1;
+}
+
+if (a == 8) {
+    print(ok);
+} else {
+    print(fail);
+}

@@ -1,0 +1,19 @@
+func gcd(a: int, b: int): int {
+    let r: int = 0;
+
+    while (b != 0) {
+        r = a % b;
+        a = b;
+        b = r;
+    }
+
+    return a;
+}
+
+let a: int = gcd(48, 18);
+let b: int = gcd(270, 192);
+let c: int = gcd(17, 13);
+
+print(a);
+print(b);
+print(c);

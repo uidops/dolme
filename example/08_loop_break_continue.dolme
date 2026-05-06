@@ -1,0 +1,19 @@
+let i: int = 0;
+let sum: int = 0;
+
+while (true) {
+    i = i + 1;
+
+    if (i == 3) {
+        continue;
+    }
+
+    if (i > 5) {
+        break;
+    }
+
+    sum = sum + i;
+}
+
+print(i);
+print(sum);

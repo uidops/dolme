@@ -1,0 +1,22 @@
+func multiply(a: int, b: int): int {
+    let result: int = 0;
+
+    while (b > 0) {
+        if ((b % 2) == 1) {
+            result = result + a;
+        }
+
+        a = a * 2;
+        b = b / 2;
+    }
+
+    return result;
+}
+
+let a: int = multiply(47, 42);
+let b: int = multiply(123, 0);
+let c: int = multiply(13, 13);
+
+print(a);
+print(b);
+print(c);

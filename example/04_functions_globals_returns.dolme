@@ -1,0 +1,18 @@
+let total: int = 1;
+
+func bump(a: int): int {
+    total = total + a;
+    return total;
+    total = 999;
+}
+
+func square(a: int): int {
+    return a * a;
+}
+
+let first: int = bump(4);
+let second: int = bump(square(3));
+
+print(total);
+print(first);
+print(second);

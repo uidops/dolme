@@ -1,0 +1,22 @@
+func pow_int(base: int, exp: int): int {
+    let result: int = 1;
+
+    while (exp > 0) {
+        if ((exp % 2) == 1) {
+            result = result * base;
+        }
+
+        base = base * base;
+        exp = exp / 2;
+    }
+
+    return result;
+}
+
+let a: int = pow_int(2, 10);
+let b: int = pow_int(3, 5);
+let c: int = pow_int(5, 0);
+
+print(a);
+print(b);
+print(c);

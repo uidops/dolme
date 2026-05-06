@@ -1,0 +1,29 @@
+let truth: bool = true;
+let lie: bool = false;
+let x: int = 0;
+let y: int = 0;
+let z: int = 0;
+
+if (truth and lie) {
+    x = 1;
+} else {
+    x = 2;
+}
+
+if (truth or lie) {
+    y = 3;
+} else {
+    y = 4;
+}
+
+if (not lie) {
+    z = 5;
+} else {
+    z = 6;
+}
+
+print(truth);
+print(lie);
+print(x);
+print(y);
+print(z);

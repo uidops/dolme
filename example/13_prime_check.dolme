@@ -1,0 +1,29 @@
+func is_prime(n: int): int {
+    let d: int = 2;
+    let prime: int = 1;
+
+    if (n < 2) {
+        prime = 0;
+    }
+
+    while ((d * d) <= n) {
+        if ((n % d) == 0) {
+            prime = 0;
+            break;
+        }
+
+        d = d + 1;
+    }
+
+    return prime;
+}
+
+let p1: int = is_prime(1);
+let p2: int = is_prime(2);
+let p17: int = is_prime(17);
+let p21: int = is_prime(21);
+
+print(p1);
+print(p2);
+print(p17);
+print(p21);

@@ -1,0 +1,24 @@
+let i: int = 7;
+let j: int = 2;
+let f: float = 3.5;
+let g: float = 2.0;
+
+let a: float = i + f;
+let b: float = f + i;
+let c: float = i - f;
+let d: float = f - i;
+let e: float = i * f;
+let h: float = i / g;
+let m: float = f % j;
+let n: int = i / j;
+let o: int = i % j;
+
+print(a);
+print(b);
+print(c);
+print(d);
+print(e);
+print(h);
+print(m);
+print(n);
+print(o);
