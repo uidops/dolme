@@ -7,40 +7,42 @@ import (
 )
 
 type Codegen struct {
-	ss              *stack.Stack               // Semantic stack
-	i               int                        // Instruction counter
-	pb              []Instruction              // Program Block (list of IR instructions)
-	tempCounter     int                        // Temporary variable counter
-	globalCounter   int                        // Global variable counter
-	localCounter    int                        // Local variable counter
-	paramCounter    int                        // Function parameter counter
-	argsCounter     int                        // Function arguments counter
-	currentToken    lexer.Token                // Current token being processed
-	inFunction      bool                       // Flag indicating if inside a function
-	symbolTable     map[string]int             // Symbol table mapping variable names to addresses
-	functionScope   map[string]int             // Function scope symbol table
-	typeTable       map[int]lexer.TokenType    // Type table mapping addresses to types
-	functionReturns map[string]lexer.TokenType // Function return types
-	errors          []string                   // List of semantic errors
+	ss               *stack.Stack               // Semantic stack
+	i                int                        // Instruction counter
+	pb               []Instruction              // Program Block (list of IR instructions)
+	tempCounter      int                        // Temporary variable counter
+	globalCounter    int                        // Global variable counter
+	localCounter     int                        // Local variable counter
+	paramCounter     int                        // Function parameter counter
+	argsCounter      int                        // Function arguments counter
+	argsCounterStack []int                      // Saved argument counters for nested calls
+	currentToken     lexer.Token                // Current token being processed
+	inFunction       bool                       // Flag indicating if inside a function
+	symbolTable      map[string]int             // Symbol table mapping variable names to addresses
+	functionScope    map[string]int             // Function scope symbol table
+	typeTable        map[int]lexer.TokenType    // Type table mapping addresses to types
+	functionReturns  map[string]lexer.TokenType // Function return types
+	errors           []string                   // List of semantic errors
 }
 
 // NewCodegen creates a new Codegen instance
 func NewCodegen() *Codegen {
 	return &Codegen{
-		ss:              stack.NewStack(),
-		i:               0,
-		pb:              make([]Instruction, 0),
-		tempCounter:     0,
-		globalCounter:   0,
-		localCounter:    0,
-		paramCounter:    0,
-		argsCounter:     0,
-		currentToken:    lexer.Token{},
-		inFunction:      false,
-		symbolTable:     make(map[string]int),
-		functionScope:   make(map[string]int),
-		typeTable:       make(map[int]lexer.TokenType),
-		functionReturns: make(map[string]lexer.TokenType),
+		ss:               stack.NewStack(),
+		i:                0,
+		pb:               make([]Instruction, 0),
+		tempCounter:      0,
+		globalCounter:    0,
+		localCounter:     0,
+		paramCounter:     0,
+		argsCounter:      0,
+		argsCounterStack: make([]int, 0),
+		currentToken:     lexer.Token{},
+		inFunction:       false,
+		symbolTable:      make(map[string]int),
+		functionScope:    make(map[string]int),
+		typeTable:        make(map[int]lexer.TokenType),
+		functionReturns:  make(map[string]lexer.TokenType),
 	}
 }
 
@@ -210,6 +212,7 @@ func (c *Codegen) GetVariableType(addr int) lexer.TokenType {
 	if t, exists := c.typeTable[addr]; exists {
 		return t
 	}
+
 	return lexer.EOF
 }
 

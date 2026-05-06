@@ -43,9 +43,11 @@ func TestNumbers(t *testing.T) {
 		if !matched {
 			t.Errorf("Failed to match %s (%s)", test.input, test.description)
 		}
+
 		if tokenType != test.expected {
 			t.Errorf("Input %s (%s): expected %s, got %s", test.input, test.description, test.expected, tokenType)
 		}
+
 		if lexeme != test.input {
 			t.Errorf("Input %s (%s): expected lexeme %s, got %s", test.input, test.description, test.input, lexeme)
 		}

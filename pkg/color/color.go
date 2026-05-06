@@ -53,6 +53,7 @@ func Colorize(color, text string) string {
 	if !colorEnabled {
 		return text
 	}
+
 	return color + text + Reset
 }
 
@@ -92,6 +93,7 @@ func Error(message string) string {
 	if !colorEnabled {
 		return message
 	}
+
 	return BrightRedText("Error: ") + message
 }
 
@@ -99,6 +101,7 @@ func Warning(message string) string {
 	if !colorEnabled {
 		return message
 	}
+
 	return YellowText("Warning: ") + message
 }
 
@@ -106,6 +109,7 @@ func Info(message string) string {
 	if !colorEnabled {
 		return message
 	}
+
 	return BlueText("Info: ") + message
 }
 
@@ -113,6 +117,7 @@ func Success(message string) string {
 	if !colorEnabled {
 		return message
 	}
+
 	return GreenText("Success: ") + message
 }
 
@@ -120,6 +125,7 @@ func Highlight(text, highlight string) string {
 	if !colorEnabled {
 		return text
 	}
+
 	return strings.ReplaceAll(text, highlight, YellowText(highlight))
 }
 
@@ -128,6 +134,7 @@ func Position(line, col int) string {
 	if !colorEnabled {
 		return pos
 	}
+
 	return CyanText(pos)
 }
 
@@ -135,6 +142,7 @@ func Code(code string) string {
 	if !colorEnabled {
 		return code
 	}
+
 	return GrayText(code)
 }
 

@@ -13,6 +13,7 @@ func (a *arm64Macos) Build() error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %v", err)
 	}
+
 	defer os.RemoveAll(tempDir)
 
 	asmContent := a.GetCode()

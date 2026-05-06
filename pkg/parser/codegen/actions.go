@@ -83,6 +83,7 @@ func (c *Codegen) jmpAction() {
 		if location < len(c.pb) {
 			c.pb[location] = Instruction{Op: OpJmp, Arg1: nil, Arg2: nil, Arg3: c.i, Type: lexer.EOF}
 		}
+
 		c.pop(1)
 	}
 }
@@ -117,6 +118,7 @@ func (c *Codegen) jmpfAction() {
 		if location < len(c.pb) {
 			c.pb[location] = Instruction{Op: OpJmpf, Arg1: condition, Arg2: nil, Arg3: c.i + 1, Type: lexer.EOF}
 		}
+
 		c.pop(2)
 	}
 }
@@ -284,6 +286,7 @@ func (c *Codegen) relAction() {
 		if c.GetVariableType(op1) == lexer.INT && c.GetVariableType(op2) == lexer.INT {
 			newType = lexer.INT
 		}
+
 		c.setVariableType(temp, lexer.BOOL)
 
 		c.pb = append(c.pb, Instruction{Op: relOp, Arg1: op1, Arg2: op2, Arg3: temp, Type: newType})
@@ -336,6 +339,8 @@ func (c *Codegen) paramAction() {
 // callStartAction prepares for a function call by pushing the function name onto the stack
 func (c *Codegen) callStartAction() {
 	funcName := c.currentToken.Lexeme
+	c.argsCounterStack = append(c.argsCounterStack, c.argsCounter)
+	c.argsCounter = 0
 	c.pushString(funcName)
 }
 
@@ -344,6 +349,7 @@ func (c *Codegen) callEndAction() {
 	if c.ss.Size() >= 1 {
 		funcName := c.topString()
 		returnTemp := c.getTemp()
+		argCount := c.argsCounter
 
 		ret, ok := c.functionReturns[funcName]
 		if !ok {
@@ -352,8 +358,14 @@ func (c *Codegen) callEndAction() {
 
 		c.setVariableType(returnTemp, ret)
 
-		c.pb = append(c.pb, Instruction{Op: OpCall, Arg1: funcName, Arg2: c.argsCounter, Arg3: returnTemp, Type: c.functionReturns[funcName]})
-		c.argsCounter = 0
+		c.pb = append(c.pb, Instruction{Op: OpCall, Arg1: funcName, Arg2: argCount, Arg3: returnTemp, Type: c.functionReturns[funcName]})
+		if len(c.argsCounterStack) > 0 {
+			last := len(c.argsCounterStack) - 1
+			c.argsCounter = c.argsCounterStack[last]
+			c.argsCounterStack = c.argsCounterStack[:last]
+		} else {
+			c.argsCounter = 0
+		}
 
 		c.pop(1)
 		c.push(returnTemp)
@@ -450,7 +462,8 @@ func (c *Codegen) callAction() {
 
 	c.setVariableType(returnTemp, c.functionReturns[funcName])
 
-	c.pb = append(c.pb, Instruction{Op: OpCall, Arg1: funcName, Arg2: 0, Arg3: returnTemp, Type: c.functionReturns[funcName]})
+	c.pb = append(c.pb, Instruction{Op: OpCall, Arg1: funcName, Arg2: c.argsCounter, Arg3: returnTemp, Type: c.functionReturns[funcName]})
+	c.argsCounter = 0
 	c.push(returnTemp)
 	c.i++
 }

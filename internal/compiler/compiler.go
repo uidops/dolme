@@ -66,9 +66,11 @@ func (opts *Compiler) Compile() error {
 				if instr.Arg1 != nil {
 					arg1 = fmt.Sprintf("%v", instr.Arg1)
 				}
+
 				if instr.Arg2 != nil {
 					arg2 = fmt.Sprintf("%v", instr.Arg2)
 				}
+
 				if instr.Arg3 != nil {
 					arg3 = fmt.Sprintf("%v", instr.Arg3)
 				}

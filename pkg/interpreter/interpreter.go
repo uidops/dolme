@@ -205,14 +205,10 @@ func (i *Interpreter) SetVar(addr int, v Value) {
 		return
 	}
 
-	// Temps (<800) used inside functions can be treated as frame-locals too, but
-	// we'll keep them in frame by preference if present.
 	if f := i.currentFrame(); f != nil {
-		if addr < LocalAddrBase {
-			if _, ok := f.Locals[addr]; ok {
-				f.Locals[addr] = v
-				return
-			}
+		if addr >= 600 {
+			f.Locals[addr] = v
+			return
 		}
 	}
 
@@ -227,7 +223,7 @@ func (i *Interpreter) GetVar(addr int) (Value, bool) {
 	}
 
 	if f := i.currentFrame(); f != nil {
-		if addr < LocalAddrBase {
+		if addr >= 600 {
 			if v, ok := f.Locals[addr]; ok {
 				return v, ok
 			}
@@ -254,6 +250,7 @@ func (i *Interpreter) SetVarTyped(addr int, typ lexer.TokenType, raw any) error 
 			if err != nil {
 				return err
 			}
+
 			i.SetVar(addr, newInt(n))
 		default:
 			return fmt.Errorf("unsupported raw for INT: %T", raw)
@@ -274,6 +271,7 @@ func (i *Interpreter) SetVarTyped(addr int, typ lexer.TokenType, raw any) error 
 			if err != nil {
 				return err
 			}
+
 			i.SetVar(addr, newFloat(f))
 		default:
 			return fmt.Errorf("unsupported raw for FLOAT: %T", raw)
@@ -351,6 +349,7 @@ func (i *Interpreter) StageArg(pos int, v Value) {
 	if i.argBuf == nil {
 		i.argBuf = make(map[int]Value)
 	}
+
 	i.argBuf[pos] = v
 }
 
@@ -359,10 +358,12 @@ func (i *Interpreter) ConsumeArg(pos int) (Value, bool) {
 	if i.argBuf == nil {
 		return Value{}, false
 	}
+
 	v, ok := i.argBuf[pos]
 	if ok {
 		delete(i.argBuf, pos)
 	}
+
 	return v, ok
 }
 

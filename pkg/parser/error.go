@@ -120,6 +120,7 @@ func (p *Parser) categorizeError(expected string, current lexer.Token) string {
 		if current.Type == lexer.LBRACE {
 			return "Wrong bracket type - expected parenthesis"
 		}
+
 		return "Missing opening parenthesis"
 	}
 
@@ -129,9 +130,11 @@ func (p *Parser) categorizeError(expected string, current lexer.Token) string {
 		if current.Type == lexer.ASSIGN || current.Type == lexer.SEMICOLON {
 			return "Missing identifier"
 		}
+
 		if p.isReservedKeywordAsId(current) {
 			return "Cannot use reserved keyword as identifier"
 		}
+
 		return "Expected identifier"
 	case "num":
 		return "Expected number"
@@ -139,6 +142,7 @@ func (p *Parser) categorizeError(expected string, current lexer.Token) string {
 		if current.Type == lexer.ID {
 			return "Missing quotes around string"
 		}
+
 		return "Expected string"
 	}
 
@@ -161,11 +165,13 @@ func (p *Parser) isReservedKeywordAsId(current lexer.Token) bool {
 	if current.Type != lexer.ID {
 		return false
 	}
+
 	reserved := map[lexer.TokenType]bool{
 		lexer.LET: true, lexer.FUNC: true, lexer.RETURN: true, lexer.IF: true, lexer.ELSE: true,
 		lexer.WHILE: true, lexer.BREAK: true, lexer.CONTINUE: true, lexer.PRINT: true,
 		lexer.TRUE: true, lexer.FALSE: true, lexer.AND: true, lexer.OR: true, lexer.NOT: true,
 		lexer.INT: true, lexer.FLOAT: true, lexer.BOOL: true,
 	}
+
 	return reserved[current.Type]
 }

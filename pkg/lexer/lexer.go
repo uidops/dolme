@@ -130,6 +130,7 @@ func (l *Lexer) skipWhitespace() {
 			} else {
 				l.column++
 			}
+
 			l.position++
 
 		} else if l.position+1 < l.length && ch == '/' && l.input[l.position+1] == '/' {

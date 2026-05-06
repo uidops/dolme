@@ -49,6 +49,7 @@ func coreStep(i *Interpreter) (bool, error) {
 		} else {
 			i.SetPC(pc + 1)
 		}
+
 		return false, nil
 
 	case codegen.OpAssign:
@@ -58,6 +59,7 @@ func coreStep(i *Interpreter) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
 		i.SetVar(dst, val)
 		i.SetPC(pc + 1)
 		return false, nil
@@ -71,15 +73,34 @@ func coreStep(i *Interpreter) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
 		v2, err := i.loadOperand(in.Arg2, in.Type)
 		if err != nil {
 			return false, err
 		}
+
 		res, err := i.evalBinary(in.Op, v1, v2, in.Type)
 		if err != nil {
 			return false, err
 		}
+
 		i.SetVar(dst, res)
+		i.SetPC(pc + 1)
+		return false, nil
+
+	case codegen.OpNot:
+		dst, _ := in.Arg3.(int)
+		v, err := i.loadOperand(in.Arg1, in.Type)
+		if err != nil {
+			return false, err
+		}
+
+		b, err := v.AsBool()
+		if err != nil {
+			return false, err
+		}
+
+		i.SetVar(dst, newBool(!b))
 		i.SetPC(pc + 1)
 		return false, nil
 
@@ -88,11 +109,13 @@ func coreStep(i *Interpreter) (bool, error) {
 		if i.out == nil {
 			i.out = os.Stdout
 		}
+
 		// Arg1 is operand to print
 		v, err := i.loadOperand(in.Arg1, in.Type)
 		if err != nil {
 			return false, err
 		}
+
 		switch v.Kind {
 		case KindFloat:
 			fmt.Fprintf(i.out, "%.20f\n", v.F64)
@@ -109,6 +132,7 @@ func coreStep(i *Interpreter) (bool, error) {
 		default:
 			fmt.Fprintln(i.out, "<nil>")
 		}
+
 		i.SetPC(pc + 1)
 		return false, nil
 
@@ -124,6 +148,7 @@ func coreStep(i *Interpreter) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
 		i.StageArg(pos, val)
 		i.SetPC(pc + 1)
 		return false, nil
@@ -133,23 +158,43 @@ func coreStep(i *Interpreter) (bool, error) {
 		funcName, _ := in.Arg1.(string)
 		argCount, _ := in.Arg2.(int)
 		retTemp, _ := in.Arg3.(int)
+		args := i.collectCallArgs(pc, argCount)
+		argVals := make([]Value, argCount)
+		argOK := make([]bool, argCount)
+		for p := range argCount {
+			if p < len(args) && args[p].Op == codegen.OpArg {
+				v, err := i.loadOperand(args[p].Arg1, args[p].Type)
+				if err != nil {
+					return false, err
+				}
+
+				argVals[p] = v
+				argOK[p] = true
+			}
+		}
+
 		// Determine return-to IP (next instruction)
 		returnTo := pc + 1
+
 		// Push callee frame
 		callee := i.PushFrame(funcName, returnTo, retTemp)
+
 		// Move staged args into callee parameter slots 800,801,...
-		for p := 0; p < argCount; p++ {
-			if v, ok := i.ConsumeArg(p); ok {
-				callee.Locals[LocalAddrBase+p] = v
+		for p := range argCount {
+			if argOK[p] {
+				callee.Locals[LocalAddrBase+p] = argVals[p]
 			} else {
 				// default missing args to 0 (int)
 				callee.Locals[LocalAddrBase+p] = newInt(0)
 			}
 		}
+
 		// clear any remaining staged args
 		i.ClearArgs()
+
 		// set callee PC to first instruction after label
 		start := i.funcIndex[funcName]
+
 		i.SetPC(start + 1)
 		return false, nil
 
@@ -161,8 +206,10 @@ func coreStep(i *Interpreter) (bool, error) {
 			if err != nil {
 				return false, err
 			}
+
 			retVal = v
 		}
+
 		if fr := i.currentFrame(); fr != nil {
 			// pop frame and write return value to caller
 			done := i.PopFrame()
@@ -174,10 +221,12 @@ func coreStep(i *Interpreter) (bool, error) {
 					i.globals[done.RetTemp] = retVal
 				}
 			}
+
 			// continue at return location
 			i.SetPC(done.ReturnToIP)
 			return false, nil
 		}
+
 		// top-level ret => halt
 		return true, nil
 
@@ -195,12 +244,14 @@ func coreStep(i *Interpreter) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
 		if !b {
 			target, _ := in.Arg3.(int)
 			i.SetPC(target)
 		} else {
 			i.SetPC(pc + 1)
 		}
+
 		return false, nil
 
 	case codegen.OpJmpt:
@@ -211,12 +262,14 @@ func coreStep(i *Interpreter) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
 		if b {
 			target, _ := in.Arg3.(int)
 			i.SetPC(target)
 		} else {
 			i.SetPC(pc + 1)
 		}
+
 		return false, nil
 
 	default:
@@ -238,8 +291,10 @@ func (i *Interpreter) loadOperand(op any, hint lexer.TokenType) (Value, error) {
 			if err != nil {
 				return Value{}, err
 			}
+
 			return val, nil
 		}
+
 		return Value{}, fmt.Errorf("unexpected string operand: %q", v)
 
 	case int:
@@ -257,11 +312,49 @@ func (i *Interpreter) loadOperand(op any, hint lexer.TokenType) (Value, error) {
 				return Value{}, nil
 			}
 		}
+
 		return val, nil
 
 	default:
 		return Value{}, fmt.Errorf("unsupported operand type: %T", op)
 	}
+}
+
+func (i *Interpreter) collectCallArgs(callPC, argCount int) []codegen.Instruction {
+	args := make([]codegen.Instruction, argCount)
+	found := 0
+	skipArgs := 0
+
+	for j := callPC - 1; j >= 0; j-- {
+		if argCount == 0 || found == argCount {
+			break
+		}
+
+		prev := i.pb[j]
+		if prev.Op == codegen.OpCall {
+			if n, ok := prev.Arg2.(int); ok {
+				skipArgs += n
+			}
+
+			continue
+		}
+
+		if prev.Op != codegen.OpArg {
+			continue
+		}
+
+		if skipArgs > 0 {
+			skipArgs--
+			continue
+		}
+
+		if pos, ok := prev.Arg2.(int); ok && pos >= 0 && pos < argCount && args[pos].Op == "" {
+			args[pos] = prev
+			found++
+		}
+	}
+
+	return args
 }
 
 // evalBinary evaluates a binary operation on two Values, with an optional type hint
@@ -276,10 +369,12 @@ func (i *Interpreter) evalBinary(op codegen.Operation, a, b Value, hint lexer.To
 			if err != nil {
 				return Value{}, err
 			}
+
 			bf, err := b.AsFloat64()
 			if err != nil {
 				return Value{}, err
 			}
+
 			switch op {
 			case codegen.OpAdd:
 				return newFloat(af + bf), nil
@@ -298,10 +393,12 @@ func (i *Interpreter) evalBinary(op codegen.Operation, a, b Value, hint lexer.To
 			if err != nil {
 				return Value{}, err
 			}
+
 			bi, err := b.AsInt64()
 			if err != nil {
 				return Value{}, err
 			}
+
 			switch op {
 			case codegen.OpAdd:
 				return newInt(ai + bi), nil
@@ -314,11 +411,13 @@ func (i *Interpreter) evalBinary(op codegen.Operation, a, b Value, hint lexer.To
 				if bi == 0 {
 					return Value{}, fmt.Errorf("division by zero")
 				}
+
 				return newInt(ai / bi), nil
 			case codegen.OpMod:
 				if bi == 0 {
 					return Value{}, fmt.Errorf("modulo by zero")
 				}
+
 				return newInt(ai % bi), nil
 			}
 		}
@@ -328,10 +427,12 @@ func (i *Interpreter) evalBinary(op codegen.Operation, a, b Value, hint lexer.To
 		if err != nil {
 			return Value{}, err
 		}
+
 		bb, err := b.AsBool()
 		if err != nil {
 			return Value{}, err
 		}
+
 		switch op {
 		case codegen.OpAnd:
 			return newBool(ab && bb), nil
@@ -347,10 +448,12 @@ func (i *Interpreter) evalBinary(op codegen.Operation, a, b Value, hint lexer.To
 			if err != nil {
 				return Value{}, err
 			}
+
 			bf, err := b.AsFloat64()
 			if err != nil {
 				return Value{}, err
 			}
+
 			switch op {
 			case codegen.OpEq:
 				return newBool(af == bf), nil
@@ -370,10 +473,12 @@ func (i *Interpreter) evalBinary(op codegen.Operation, a, b Value, hint lexer.To
 			if err != nil {
 				return Value{}, err
 			}
+
 			bi, err := b.AsInt64()
 			if err != nil {
 				return Value{}, err
 			}
+
 			switch op {
 			case codegen.OpEq:
 				return newBool(ai == bi), nil

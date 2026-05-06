@@ -38,6 +38,7 @@ func (v Value) String() string {
 		if v.Bool {
 			return "true"
 		}
+
 		return "false"
 	case KindString:
 		return v.Str
@@ -57,6 +58,7 @@ func (v Value) AsFloat64() (float64, error) {
 		if v.Bool {
 			return 1.0, nil
 		}
+
 		return 0.0, nil
 	default:
 		return 0, fmt.Errorf("cannot convert %v to float", v.Kind)
@@ -74,6 +76,7 @@ func (v Value) AsInt64() (int64, error) {
 		if v.Bool {
 			return 1, nil
 		}
+
 		return 0, nil
 	default:
 		return 0, fmt.Errorf("cannot convert %v to int", v.Kind)
@@ -119,12 +122,14 @@ func parseImmediate(imm string) (Value, error) {
 	if !strings.HasPrefix(imm, "#") {
 		return Value{}, fmt.Errorf("immediate must start with '#': %q", imm)
 	}
+
 	body := imm[1:]
 
 	// booleans
 	if body == "true" {
 		return newBool(true), nil
 	}
+
 	if body == "false" {
 		return newBool(false), nil
 	}

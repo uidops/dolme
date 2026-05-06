@@ -17,11 +17,12 @@ func (a *arm64Macos) addCString(instruction string) {
 
 // findFunctionEnd finds the end of a function given the index of its label
 func (a *arm64Macos) findFunctionEnd(labelIdx int) int {
-	for i := labelIdx + 1; i < len(a.pb); i++ {
-		if a.pb[i].Op == codegen.OpEnd {
-			return i - 1
+	for relIdx, instr := range a.pb[labelIdx+1:] {
+		if instr.Op == codegen.OpEnd {
+			return labelIdx + relIdx
 		}
 	}
+
 	return -1
 }
 
@@ -30,9 +31,11 @@ func normalizeImmediate(val string) string {
 	if val == "true" {
 		return "1"
 	}
+
 	if val == "false" {
 		return "0"
 	}
+
 	return val
 }
 
