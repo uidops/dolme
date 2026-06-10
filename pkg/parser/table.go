@@ -47,10 +47,10 @@ var grammer = []Production{
 
 	{LHS: "VarDecl", RHS: []string{"let", "id", "@capture_decl_var", ":", "Type", "@capture_type", "=", "Expr", ";", "@define"}}, // 25
 
-	{LHS: "Assign", RHS: []string{"id", "@capture_assign_target", "AssignSuffix", ";"}}, // 26
+	{LHS: "Assign", RHS: []string{"id", "@capture_stmt_id", "AssignSuffix", ";"}}, // 26
 
-	{LHS: "AssignSuffix", RHS: []string{"=", "Expr", "@assign"}},       // 27
-	{LHS: "AssignSuffix", RHS: []string{"(", "ArgList", ")", "@call"}}, // 28
+	{LHS: "AssignSuffix", RHS: []string{"=", "Expr", "@assign"}},                                    // 27
+	{LHS: "AssignSuffix", RHS: []string{"(", "@stmt_call_start", "ArgList", ")", "@stmt_call_end"}}, // 28
 
 	{LHS: "IfStmt", RHS: []string{"if", "(", "Cond", ")", "@save", "{", "StmtList", "}", "ElsePart"}}, // 29
 

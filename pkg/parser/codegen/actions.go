@@ -233,14 +233,25 @@ func (c *Codegen) loadAction() {
 	}
 }
 
-// assignAction generates code for assignment operations
+// assignAction generates code for assignment operations.
+// The assignment target name was pushed by @capture_stmt_id and is resolved here,
+// because at capture time it is not yet known whether the statement is an
+// assignment (needs a variable) or a call (needs a function).
 func (c *Codegen) assignAction() {
 	if c.ss.Size() >= 2 {
 		value := c.top()
-		targetAddr := c.topMinus(1)
+		varName := c.topStringMinus(1)
+
+		targetAddr, exists := c.getVariableAddress(varName)
+		if !exists {
+			c.addUndefinedVariableError(varName, c.stmtIDToken.Pos)
+			c.pop(2)
+			return
+		}
 
 		if c.GetVariableType(value) != c.GetVariableType(targetAddr) {
 			c.addTypeMismatchError(c.GetVariableType(targetAddr), c.GetVariableType(value), c.currentToken.Pos)
+			c.pop(2)
 			return
 		}
 
@@ -385,6 +396,42 @@ func (c *Codegen) callStartAction() {
 	c.pushString(funcName)
 }
 
+// stmtCallStartAction prepares for a statement-form function call (`foo(...);`).
+// The function name is already on the stack, pushed by @capture_stmt_id.
+func (c *Codegen) stmtCallStartAction() {
+	c.argsCounterStack = append(c.argsCounterStack, c.argsCounter)
+	c.argsCounter = 0
+}
+
+// stmtCallEndAction finalizes a statement-form function call. Unlike
+// callEndAction, the return value is discarded instead of pushed.
+func (c *Codegen) stmtCallEndAction() {
+	if c.ss.Size() >= 1 {
+		funcName := c.topString()
+		returnTemp := c.getTemp()
+		argCount := c.argsCounter
+
+		ret, ok := c.functionReturns[funcName]
+		if !ok {
+			c.addUndefinedFunctionError(funcName, c.stmtIDToken.Pos)
+		}
+
+		c.setVariableType(returnTemp, ret)
+
+		c.pb = append(c.pb, Instruction{Op: OpCall, Arg1: funcName, Arg2: argCount, Arg3: returnTemp, Type: ret})
+		if len(c.argsCounterStack) > 0 {
+			last := len(c.argsCounterStack) - 1
+			c.argsCounter = c.argsCounterStack[last]
+			c.argsCounterStack = c.argsCounterStack[:last]
+		} else {
+			c.argsCounter = 0
+		}
+
+		c.pop(1)
+		c.i++
+	}
+}
+
 // callEndAction finalizes a function call by generating the call instruction and handling the return value
 func (c *Codegen) callEndAction() {
 	if c.ss.Size() >= 1 {
@@ -488,33 +535,17 @@ func (c *Codegen) funcReturnTypeAction() {
 	}
 }
 
-// captureAssignTargetAction looks up or creates the variable address for an assignment target
-func (c *Codegen) captureAssignTargetAction() {
-	// look up assignment target variable address
-	varName := c.currentToken.Lexeme
-	if addr, exists := c.getVariableAddress(varName); exists {
-		c.push(addr)
-	} else {
-		c.addUndefinedVariableError(varName, c.currentToken.Pos)
-	}
+// captureStmtIdAction records the identifier starting a statement (`x = ...;` or
+// `foo(...);`). Resolution is deferred: @assign looks it up as a variable,
+// @stmt_call_end as a function.
+func (c *Codegen) captureStmtIdAction() {
+	c.stmtIDToken = c.currentToken
+	c.pushString(c.currentToken.Lexeme)
 }
 
 // pushRelOpAction pushes the relational operator string onto the stack for relational operations
 func (c *Codegen) pushRelOpAction() {
 	c.pushString(c.currentToken.Lexeme)
-}
-
-// callAction handles function calls in assignment contexts
-func (c *Codegen) callAction() {
-	funcName := c.currentToken.Lexeme
-	returnTemp := c.getTemp()
-
-	c.setVariableType(returnTemp, c.functionReturns[funcName])
-
-	c.pb = append(c.pb, Instruction{Op: OpCall, Arg1: funcName, Arg2: c.argsCounter, Arg3: returnTemp, Type: c.functionReturns[funcName]})
-	c.argsCounter = 0
-	c.push(returnTemp)
-	c.i++
 }
 
 // ExecuteAction executes the semantic action corresponding to the given action name
@@ -532,37 +563,38 @@ func (c *Codegen) ExecuteAction(actionName string) {
 		"@jmpf_normal":           c.jmpfNormalAction,
 		"@jmpf":                  c.jmpfAction,
 		"@jmpf_break":            c.jmpfBreakAction,
-		"@add":                   func() { c.binaryOpAction(OpAdd) },
-		"@sub":                   func() { c.binaryOpAction(OpSub) },
-		"@mul":                   func() { c.binaryOpAction(OpMul) },
-		"@div":                   func() { c.binaryOpAction(OpDiv) },
-		"@mod":                   func() { c.binaryOpAction(OpMod) },
-		"@push":                  c.pushAction,
-		"@load":                  c.loadAction,
-		"@assign":                c.assignAction,
-		"@define":                c.defineAction,
-		"@print":                 c.printAction,
-		"@or":                    func() { c.binaryOpAction(OpOr) },
-		"@and":                   func() { c.binaryOpAction(OpAnd) },
-		"@not":                   c.notAction,
-		"@rel":                   c.relAction,
-		"@func_start":            c.functionStartAction,
-		"@func_end":              c.funcEndAction,
-		"@func_return_type":      c.funcReturnTypeAction,
-		"@param":                 c.paramAction,
-		"@call_start":            c.callStartAction,
-		"@call_end":              c.callEndAction,
-		"@call":                  c.callAction,
-		"@arg":                   c.argAction,
-		"@return":                c.returnAction,
-		"@continue":              c.continueAction,
-		"@capture_decl_var":      c.captureDeclVarAction,
-		"@capture_type":          c.captureTypeAction,
-		"@capture_assign_target": c.captureAssignTargetAction,
-		"@capture_param_name":    c.captureParamNameAction,
-		"@push_relop":            c.pushRelOpAction,
-		"@save_break":            c.saveBreakAction,
-		"@label_while":           c.labelWhileAction,
+		"@add":                func() { c.binaryOpAction(OpAdd) },
+		"@sub":                func() { c.binaryOpAction(OpSub) },
+		"@mul":                func() { c.binaryOpAction(OpMul) },
+		"@div":                func() { c.binaryOpAction(OpDiv) },
+		"@mod":                func() { c.binaryOpAction(OpMod) },
+		"@push":               c.pushAction,
+		"@load":               c.loadAction,
+		"@assign":             c.assignAction,
+		"@define":             c.defineAction,
+		"@print":              c.printAction,
+		"@or":                 func() { c.binaryOpAction(OpOr) },
+		"@and":                func() { c.binaryOpAction(OpAnd) },
+		"@not":                c.notAction,
+		"@rel":                c.relAction,
+		"@func_start":         c.functionStartAction,
+		"@func_end":           c.funcEndAction,
+		"@func_return_type":   c.funcReturnTypeAction,
+		"@param":              c.paramAction,
+		"@call_start":         c.callStartAction,
+		"@call_end":           c.callEndAction,
+		"@stmt_call_start":    c.stmtCallStartAction,
+		"@stmt_call_end":      c.stmtCallEndAction,
+		"@arg":                c.argAction,
+		"@return":             c.returnAction,
+		"@continue":           c.continueAction,
+		"@capture_decl_var":   c.captureDeclVarAction,
+		"@capture_type":       c.captureTypeAction,
+		"@capture_stmt_id":    c.captureStmtIdAction,
+		"@capture_param_name": c.captureParamNameAction,
+		"@push_relop":         c.pushRelOpAction,
+		"@save_break":         c.saveBreakAction,
+		"@label_while":        c.labelWhileAction,
 	}
 
 	if action, exists := SemanticActions[actionName]; exists {

@@ -27,6 +27,7 @@ type Codegen struct {
 	argsCounter      int                        // Function arguments counter
 	argsCounterStack []int                      // Saved argument counters for nested calls
 	currentToken     lexer.Token                // Current token being processed
+	stmtIDToken      lexer.Token                // Identifier token that started the current assignment/call statement
 	inFunction       bool                       // Flag indicating if inside a function
 	symbolTable      map[string]int             // Symbol table mapping variable names to addresses
 	functionScope    map[string]int             // Function scope symbol table
