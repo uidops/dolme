@@ -13,7 +13,9 @@ import (
 	"dolme/pkg/parser/codegen"
 )
 
-const LocalAddrBase = 800
+// Address-range bounds come from the codegen package so the interpreter and
+// code generator always agree on which band an address belongs to.
+const LocalAddrBase = codegen.LocalAddrBase
 
 // Interpreter executes three-address IR (PB) produced by codegen
 type Interpreter struct {
@@ -206,7 +208,7 @@ func (i *Interpreter) SetVar(addr int, v Value) {
 	}
 
 	if f := i.currentFrame(); f != nil {
-		if addr >= 600 {
+		if addr >= codegen.TempAddrBase {
 			f.Locals[addr] = v
 			return
 		}
@@ -223,7 +225,7 @@ func (i *Interpreter) GetVar(addr int) (Value, bool) {
 	}
 
 	if f := i.currentFrame(); f != nil {
-		if addr >= 600 {
+		if addr >= codegen.TempAddrBase {
 			if v, ok := f.Locals[addr]; ok {
 				return v, ok
 			}

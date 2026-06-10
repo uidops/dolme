@@ -179,7 +179,7 @@ func coreStep(i *Interpreter) (bool, error) {
 		// Push callee frame
 		callee := i.PushFrame(funcName, returnTo, retTemp)
 
-		// Move staged args into callee parameter slots 800,801,...
+		// Move staged args into callee parameter slots LocalAddrBase, LocalAddrBase+1, ...
 		for p := range argCount {
 			if argOK[p] {
 				callee.Locals[LocalAddrBase+p] = argVals[p]

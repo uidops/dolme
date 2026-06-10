@@ -88,7 +88,7 @@ func (a *arm64Macos) collectStackLayout() {
 					}
 				}
 
-				if addr >= 800 {
+				if addr >= codegen.LocalAddrBase {
 					// local variable
 					if inFunc && currFunc != "" {
 						funcAddrs[currFunc][addr] = struct{}{}
@@ -97,7 +97,7 @@ func (a *arm64Macos) collectStackLayout() {
 						globalAddrs[addr] = struct{}{}
 					}
 				} else {
-					// temps (<800) used inside a function are treated as locals; at top-level they are globals
+					// temps (< LocalAddrBase) used inside a function are treated as locals; at top-level they are globals
 					if inFunc && currFunc != "" {
 						funcAddrs[currFunc][addr] = struct{}{}
 					} else {
@@ -627,11 +627,11 @@ func (a *arm64Macos) addrRefFromStableSP(addr int, funcName, localBase string) s
 }
 
 // getVarType returns the variable type for an address in the context of a function.
-// For local/param addresses (>=800) it prefers the function-local map to avoid
-// cross-function type leaks caused by reused address ranges. Falls back to the
+// For local/param addresses (>= LocalAddrBase) it prefers the function-local map to
+// avoid cross-function type leaks caused by reused address ranges. Falls back to the
 // global codegen type table otherwise.
 func (a *arm64Macos) getVarType(addr int, funcName string) lexer.TokenType {
-	if funcName != "" && addr >= 800 {
+	if funcName != "" && addr >= codegen.LocalAddrBase {
 		if m, ok := a.funcTypes[funcName]; ok {
 			if t, ok2 := m[addr]; ok2 {
 				return t

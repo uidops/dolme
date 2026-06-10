@@ -6,6 +6,16 @@ import (
 	"strconv"
 )
 
+// Address-space layout for the three-address code. The ranges must not overlap:
+// temp addresses grow without bound (the counter is never reset), so the bands
+// are kept wide apart. The interpreter and assembly backends use these bounds
+// to decide which frame an address belongs to.
+const (
+	GlobalAddrBase = 400     // global variables: [GlobalAddrBase, TempAddrBase)
+	TempAddrBase   = 100000  // temporaries: [TempAddrBase, LocalAddrBase)
+	LocalAddrBase  = 1000000 // function locals and parameters: [LocalAddrBase, ...)
+)
+
 type Codegen struct {
 	ss               *stack.Stack               // Semantic stack
 	i                int                        // Instruction counter
@@ -129,7 +139,7 @@ func (c *Codegen) topStringMinus(offset int) string {
 
 // getTemp returns a new temporary variable address
 func (c *Codegen) getTemp() int {
-	addr := 600 + c.tempCounter
+	addr := TempAddrBase + c.tempCounter
 	c.tempCounter++
 	return addr
 }
@@ -140,7 +150,7 @@ func (c *Codegen) getVariable() int {
 		return c.getLocalVariable()
 	}
 
-	addr := 400 + c.globalCounter
+	addr := GlobalAddrBase + c.globalCounter
 	c.globalCounter++
 
 	return addr
@@ -148,7 +158,7 @@ func (c *Codegen) getVariable() int {
 
 // getLocalVariable returns a new local variable address
 func (c *Codegen) getLocalVariable() int {
-	addr := 800 + c.localCounter
+	addr := LocalAddrBase + c.localCounter
 	c.localCounter++
 
 	return addr
