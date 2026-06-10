@@ -32,8 +32,25 @@ func (c *Codegen) isBackpatchMarker(s string) bool {
 	return strings.HasPrefix(s, "$while_") || strings.HasPrefix(s, "$break_")
 }
 
+// insideLoop reports whether a $while_ marker is on the semantic stack,
+// i.e. the statement currently being parsed is inside a while body
+func (c *Codegen) insideLoop() bool {
+	for j := 0; j < c.ss.Size(); j++ {
+		if strings.HasPrefix(c.topStringMinus(j), "$while_") {
+			return true
+		}
+	}
+
+	return false
+}
+
 // saveBreakAction saves a break action by appending a NOP instruction and pushing the index and a unique break label onto the stack
 func (c *Codegen) saveBreakAction() {
+	if !c.insideLoop() {
+		c.addOutsideLoopError("break", c.currentToken.Pos)
+		return
+	}
+
 	c.pb = append(c.pb, Instruction{OpNop, nil, nil, nil, lexer.EOF})
 	c.pushString(fmt.Sprintf("$break_%d", c.i))
 	c.i++
@@ -424,14 +441,22 @@ func (c *Codegen) returnAction() {
 
 // continueAction generates a jump instruction to the start of the loop for continue statements
 func (c *Codegen) continueAction() {
-	j := 0
-	for c.ss.Size() >= 1 && !strings.HasPrefix(c.topStringMinus(j), "$while_") {
-		j++
+	label := ""
+	for j := 0; j < c.ss.Size(); j++ {
+		if s := c.topStringMinus(j); strings.HasPrefix(s, "$while_") {
+			label = s
+			break
+		}
 	}
 
-	loc, err := strconv.ParseInt(strings.TrimPrefix(c.topStringMinus(j), "$while_"), 10, 64)
+	if label == "" {
+		c.addOutsideLoopError("continue", c.currentToken.Pos)
+		return
+	}
+
+	loc, err := strconv.ParseInt(strings.TrimPrefix(label, "$while_"), 10, 64)
 	if err != nil {
-		log.Error("Invalid while label", "label", c.topStringMinus(j))
+		log.Error("Invalid while label", "label", label)
 		return
 	}
 

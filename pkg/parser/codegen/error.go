@@ -28,6 +28,12 @@ func (c *Codegen) addUndefinedFunctionError(funcName string, pos lexer.Position)
 	c.addError(msg)
 }
 
+func (c *Codegen) addOutsideLoopError(stmt string, pos lexer.Position) {
+	msg := color.RedText("`"+stmt+"` outside of loop")
+	msg += " at " + color.YellowText(fmt.Sprintf("Line: %d, Column %d", pos.Line, pos.Column))
+	c.addError(msg)
+}
+
 func (c *Codegen) addRedeclarationError(varName string, pos lexer.Position) {
 	msg := color.RedText("Redeclaration of variable") + " `" + color.BlueText(varName) + "`"
 	msg += " at " + color.YellowText(fmt.Sprintf("Line: %d, Column %d", pos.Line, pos.Column))
