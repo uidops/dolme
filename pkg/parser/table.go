@@ -67,8 +67,8 @@ var grammer = []Production{
 
 	{LHS: "ReturnStmt", RHS: []string{"return", "ReturnValue", ";", "@return"}}, // 36
 
-	{LHS: "ReturnValue", RHS: []string{"Cond"}}, // 37
-	{LHS: "ReturnValue", RHS: []string{"ε"}},    // 38
+	{LHS: "ReturnValue", RHS: []string{"Cond"}},              // 37
+	{LHS: "ReturnValue", RHS: []string{"@return_void", "ε"}}, // 38
 
 	{LHS: "Expr", RHS: []string{"Term", "Expr'"}}, // 39
 

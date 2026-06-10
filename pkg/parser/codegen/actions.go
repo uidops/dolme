@@ -500,13 +500,23 @@ func (c *Codegen) argAction() {
 	}
 }
 
+// returnVoidAction marks a bare `return;` by pushing a sentinel, so returnAction
+// does not mistake an enclosing if/while backpatch entry for a return value
+func (c *Codegen) returnVoidAction() {
+	c.pushString("$void")
+}
+
 // returnAction generates the return instruction for a function
 func (c *Codegen) returnAction() {
-	if c.ss.Size() >= 1 {
+	if c.ss.Size() >= 1 && c.topString() != "$void" {
 		returnVal := c.top()
 		c.pb = append(c.pb, Instruction{Op: OpRet, Arg1: returnVal, Arg2: nil, Arg3: nil, Type: c.GetVariableType(returnVal)})
 		c.pop(1)
 	} else {
+		if c.ss.Size() >= 1 {
+			c.pop(1) // drop the $void sentinel
+		}
+
 		c.pb = append(c.pb, Instruction{Op: OpRet, Arg1: nil, Arg2: nil, Arg3: nil, Type: lexer.EOF})
 	}
 
@@ -616,6 +626,7 @@ func (c *Codegen) ExecuteAction(actionName string) {
 		"@stmt_call_end":      c.stmtCallEndAction,
 		"@arg":                c.argAction,
 		"@return":             c.returnAction,
+		"@return_void":        c.returnVoidAction,
 		"@continue":           c.continueAction,
 		"@capture_decl_var":   c.captureDeclVarAction,
 		"@capture_type":       c.captureTypeAction,
