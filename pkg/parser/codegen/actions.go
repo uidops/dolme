@@ -292,6 +292,34 @@ func (c *Codegen) printAction() {
 	}
 }
 
+// negAction generates code for unary minus by subtracting the operand from zero
+func (c *Codegen) negAction() {
+	if c.ss.Size() >= 1 {
+		op1 := c.top()
+		opType := c.GetVariableType(op1)
+
+		// materialize a zero constant matching the operand's numeric type
+		zero := c.getTemp()
+		resultType := lexer.INT
+		zeroImm := "#0"
+		if opType == lexer.FLOAT {
+			resultType = lexer.FLOAT
+			zeroImm = "#0.0"
+		}
+
+		c.setVariableType(zero, resultType)
+		c.pb = append(c.pb, Instruction{Op: OpAssign, Arg1: zeroImm, Arg2: nil, Arg3: zero, Type: resultType})
+		c.i++
+
+		t := c.getTemp()
+		c.setVariableType(t, resultType)
+		c.pb = append(c.pb, Instruction{Op: OpSub, Arg1: zero, Arg2: op1, Arg3: t, Type: resultType})
+		c.pop(1)
+		c.push(t)
+		c.i++
+	}
+}
+
 // notAction generates code for logical NOT operations
 func (c *Codegen) notAction() {
 	if c.ss.Size() >= 1 {
@@ -568,6 +596,7 @@ func (c *Codegen) ExecuteAction(actionName string) {
 		"@mul":                func() { c.binaryOpAction(OpMul) },
 		"@div":                func() { c.binaryOpAction(OpDiv) },
 		"@mod":                func() { c.binaryOpAction(OpMod) },
+		"@neg":                c.negAction,
 		"@push":               c.pushAction,
 		"@load":               c.loadAction,
 		"@assign":             c.assignAction,

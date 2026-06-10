@@ -129,6 +129,8 @@ var grammer = []Production{
 	{LHS: "RelOp", RHS: []string{">=", "@push_relop"}}, // 77
 	{LHS: "RelOp", RHS: []string{"==", "@push_relop"}}, // 78
 	{LHS: "RelOp", RHS: []string{"!=", "@push_relop"}}, // 79
+
+	{LHS: "Factor", RHS: []string{"-", "Factor", "@neg"}}, // 80 - unary minus
 }
 
 // NewParsingTable creates and returns a new LL(1) parsing table
@@ -273,6 +275,7 @@ func NewParsingTable() ParsingTable {
 			lexer.TRUE:      grammer[37],
 			lexer.FALSE:     grammer[37],
 			lexer.NOT:       grammer[37],
+			lexer.MINUS:     grammer[37],
 			lexer.SEMICOLON: grammer[38],
 		},
 
@@ -282,6 +285,7 @@ func NewParsingTable() ParsingTable {
 			lexer.LPAREN: grammer[39],
 			lexer.TRUE:   grammer[39],
 			lexer.FALSE:  grammer[39],
+			lexer.MINUS:  grammer[39],
 		},
 
 		"Expr'": {
@@ -306,6 +310,7 @@ func NewParsingTable() ParsingTable {
 			lexer.LPAREN: grammer[43],
 			lexer.TRUE:   grammer[43],
 			lexer.FALSE:  grammer[43],
+			lexer.MINUS:  grammer[43],
 		},
 
 		"Term'": {
@@ -353,6 +358,7 @@ func NewParsingTable() ParsingTable {
 			lexer.TRUE:   grammer[50],
 			lexer.FALSE:  grammer[51],
 			lexer.LPAREN: grammer[52],
+			lexer.MINUS:  grammer[80],
 		},
 
 		"ArgList": {
@@ -362,6 +368,7 @@ func NewParsingTable() ParsingTable {
 			lexer.TRUE:   grammer[55],
 			lexer.FALSE:  grammer[55],
 			lexer.NOT:    grammer[55],
+			lexer.MINUS:  grammer[55],
 			lexer.RPAREN: grammer[56],
 		},
 
@@ -377,6 +384,7 @@ func NewParsingTable() ParsingTable {
 			lexer.NOT:    grammer[59],
 			lexer.TRUE:   grammer[59],
 			lexer.FALSE:  grammer[59],
+			lexer.MINUS:  grammer[59],
 		},
 
 		"OrExpr": {
@@ -386,6 +394,7 @@ func NewParsingTable() ParsingTable {
 			lexer.NOT:    grammer[60],
 			lexer.TRUE:   grammer[60],
 			lexer.FALSE:  grammer[60],
+			lexer.MINUS:  grammer[60],
 		},
 
 		"OrExpr'": {
@@ -402,6 +411,7 @@ func NewParsingTable() ParsingTable {
 			lexer.NOT:    grammer[63],
 			lexer.TRUE:   grammer[63],
 			lexer.FALSE:  grammer[63],
+			lexer.MINUS:  grammer[63],
 		},
 
 		"AndExpr'": {
@@ -419,6 +429,7 @@ func NewParsingTable() ParsingTable {
 			lexer.LPAREN: grammer[67],
 			lexer.TRUE:   grammer[67],
 			lexer.FALSE:  grammer[67],
+			lexer.MINUS:  grammer[67],
 		},
 
 		"RelExpr": {
@@ -427,6 +438,7 @@ func NewParsingTable() ParsingTable {
 			lexer.LPAREN: grammer[68],
 			lexer.TRUE:   grammer[68],
 			lexer.FALSE:  grammer[68],
+			lexer.MINUS:  grammer[68],
 		},
 
 		"RelExpr'": {
@@ -449,6 +461,7 @@ func NewParsingTable() ParsingTable {
 			lexer.LPAREN: grammer[73],
 			lexer.ID:     grammer[73],
 			lexer.NUM:    grammer[73],
+			lexer.MINUS:  grammer[73],
 		},
 
 		"RelOp": {
