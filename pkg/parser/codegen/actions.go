@@ -267,18 +267,28 @@ func (c *Codegen) assignAction() {
 func (c *Codegen) defineAction() {
 	if c.ss.Size() >= 3 {
 		value := c.top()
+		typeStr := c.topStringMinus(1)
 		varName := c.topStringMinus(2)
 
 		if c.isVariableDeclared(varName) {
 			c.addRedeclarationError(varName, c.currentToken.Pos)
 		}
 
+		// Check the initializer against the declared type. An int initializer in
+		// a float declaration is tolerated (the variable then behaves as int,
+		// matching how mixed arithmetic widens on use).
+		declared := lexer.Keywords[typeStr]
+		valueType := c.GetVariableType(value)
+		if valueType != lexer.EOF && declared != valueType && !(declared == lexer.FLOAT && valueType == lexer.INT) {
+			c.addTypeMismatchError(declared, valueType, c.currentToken.Pos)
+		}
+
 		varAddr := c.getVariable()
 		c.declareVariable(varName, varAddr)
 
-		c.setVariableType(varAddr, c.GetVariableType(value))
+		c.setVariableType(varAddr, valueType)
 
-		c.pb = append(c.pb, Instruction{Op: OpAssign, Arg1: value, Arg2: nil, Arg3: varAddr, Type: c.GetVariableType(value)})
+		c.pb = append(c.pb, Instruction{Op: OpAssign, Arg1: value, Arg2: nil, Arg3: varAddr, Type: valueType})
 		c.pop(3)
 		c.i++
 	}
