@@ -90,6 +90,8 @@ func (opts *Compiler) Compile() error {
 		switch opts.TargetArch {
 		case "arm64-macos":
 			arch = arm64_macos.NewArm64Macos(instructions, p.GetCG(), opts.OutputFile)
+		default:
+			return fmt.Errorf("unsupported target architecture %q (supported: arm64-macos)", opts.TargetArch)
 		}
 
 		if err := arch.Generate(); err != nil {
