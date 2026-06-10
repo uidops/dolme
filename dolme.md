@@ -29,11 +29,12 @@ StmtList → Stmt StmtList | ε                              (15,16)
 Stmt → VarDecl | Assign | IfStmt | WhileStmt | PrintStmt | ReturnStmt | ContinueStmt | BreakStmt
                                                          (17..24)
 
-VarDecl → let id @capture_decl_var : Type @capture_type = Expr ; @define
+VarDecl → let id @capture_decl_var : Type @capture_type = Cond ; @define
                                                          (25)
 
-Assign → id @capture_assign_target AssignSuffix ;         (26)
-AssignSuffix → = Expr @assign | ( ArgList ) @call        (27,28)
+Assign → id @capture_stmt_id AssignSuffix ;               (26)
+AssignSuffix → = Cond @assign | ( @stmt_call_start ArgList ) @stmt_call_end
+                                                         (27,28)
 
 IfStmt → if ( Cond ) @save { StmtList } ElsePart         (29)
 ElsePart → @jmpf @save else { StmtList } @jmp | @jmpf_normal ε
@@ -48,7 +49,7 @@ BreakStmt → break ; @save_break                           (34)
 PrintStmt → print ( id @load ) ; @print                   (35)
 
 ReturnStmt → return ReturnValue ; @return                 (36)
-ReturnValue → Expr | ε                                    (37,38)
+ReturnValue → Cond | @return_void ε                       (37,38)
 
 Expr → Term Expr'                                         (39)
 Expr' → + Term Expr' @add | - Term Expr' @sub | ε        (40,41,42)
@@ -57,13 +58,13 @@ Term → Factor Term'                                       (43)
 Term' → * Factor Term' @mul | / Factor Term' @div | % Factor Term' @mod | ε
                                                          (44,45,46,47)
 
-Factor → id FactorSuffix | num @push | true @push | false @push | ( Expr )
-                                                         (48..52)
+Factor → id FactorSuffix | num @push | true @push | false @push | ( Cond ) | - Factor @neg
+                                                         (48..52, 80)
 
 FactorSuffix → @load | @call_start ( ArgList ) @call_end (53,54)
 
-ArgList → Expr @arg ArgList' | ε                         (55,56)
-ArgList' → , Expr @arg ArgList' | ε                      (57,58)
+ArgList → Cond @arg ArgList' | ε                         (55,56)
+ArgList' → , Cond @arg ArgList' | ε                      (57,58)
 
 Cond → OrExpr                                            (59)
 
@@ -82,6 +83,8 @@ BoolPrimary → true @push | false @push | Expr            (71,72,73)
 
 RelOp → < @push_relop | > @push_relop | <= @push_relop | >= @push_relop | == @push_relop | != @push_relop
                                                          (74..79)
+
+Factor → - Factor @neg                                   (80, unary minus)
 ```
 
 Notes:
@@ -112,28 +115,29 @@ Notes:
 - FIRST(BreakStmt)    = { break }
 - FIRST(PrintStmt)    = { print }
 - FIRST(ReturnStmt)   = { return }
-- FIRST(ReturnValue)  = { id, num, (, true, false, not, ε }
-- FIRST(Expr)         = { id, num, (, true, false }
+- FIRST(ReturnValue)  = { id, num, (, true, false, not, -, ε }
+- FIRST(Expr)         = { id, num, (, true, false, - }
 - FIRST(Expr')        = { +, -, ε }
-- FIRST(Term)         = { id, num, (, true, false }
+- FIRST(Term)         = { id, num, (, true, false, - }
 - FIRST(Term')        = { *, /, %, ε }
-- FIRST(Factor)       = { id, num, true, false, ( }
+- FIRST(Factor)       = { id, num, true, false, (, - }
 - FIRST(FactorSuffix) = { (, ε }        # '(' → call; ε → @load
-- FIRST(ArgList)      = { id, num, (, true, false, not, ε }
+- FIRST(ArgList)      = { id, num, (, true, false, not, -, ε }
 - FIRST(ArgList')     = { ,, ε }
-- FIRST(Cond)         = { not, id, num, (, true, false }
-- FIRST(OrExpr)       = { not, id, num, (, true, false }
+- FIRST(Cond)         = { not, id, num, (, true, false, - }
+- FIRST(OrExpr)       = { not, id, num, (, true, false, - }
 - FIRST(OrExpr')      = { or, ε }
-- FIRST(AndExpr)      = { not, id, num, (, true, false }
+- FIRST(AndExpr)      = { not, id, num, (, true, false, - }
 - FIRST(AndExpr')     = { and, ε }
-- FIRST(NotExpr)      = { not, id, num, (, true, false }
-- FIRST(RelExpr)      = { id, num, (, true, false }
+- FIRST(NotExpr)      = { not, id, num, (, true, false, - }
+- FIRST(RelExpr)      = { id, num, (, true, false, - }
 - FIRST(RelExpr')     = { <, >, <=, >=, ==, !=, ε }
-- FIRST(BoolPrimary)  = { true, false, id, num, ( }
+- FIRST(BoolPrimary)  = { true, false, id, num, (, - }
 - FIRST(RelOp)        = { <, >, <=, >=, ==, != }
 
-Implementation note:
-- `ReturnValue` and `ArgList` include `not` in their FIRST sets and table entries (they dispatch to production 37 / 55 when `not` is seen). However, `Expr` itself does not include `not` in its FIRST set or table entry. This creates an inconsistency: a return value or argument starting with `not` reduces to a production that expects `Expr`, but `Expr` has no `not` entry in the parsing table. See section 5 (Consistency Notes) for details.
+Implementation notes:
+- A leading `-` in an operand position selects the unary-minus production (80, `Factor → - Factor @neg`); in operator-tail position (`Expr'`) it is binary subtraction. The grammar stays LL(1) because the two appear in different non-terminals.
+- `VarDecl`, `Assign`, `ReturnValue`, `ArgList`, and parenthesized factors all route through `Cond`, so boolean expressions (`not`, `and`, `or`, comparisons) are valid in initializers, assignments, return values, arguments, and inside parentheses.
 
 ---
 
@@ -168,16 +172,16 @@ Implementation note:
 - FOLLOW(FactorSuffix)= FOLLOW(Factor)
 - FOLLOW(ArgList)     = { ) }
 - FOLLOW(ArgList')    = FOLLOW(ArgList)
-- FOLLOW(Cond)        = { ) }
-- FOLLOW(OrExpr)      = FOLLOW(Cond) = { ) }
-- FOLLOW(OrExpr')     = FOLLOW(OrExpr) = { ) }
-- FOLLOW(AndExpr)     = { or, ) }
-- FOLLOW(AndExpr')    = FOLLOW(AndExpr) = { or, ) }
-- FOLLOW(NotExpr)     = { and, or, ) }
-- FOLLOW(RelExpr)     = FOLLOW(NotExpr) = { and, or, ) }
-- FOLLOW(RelExpr')    = FOLLOW(RelExpr) = { and, or, ) }
-- FOLLOW(BoolPrimary) = { <, >, <=, >=, ==, !=, and, or, ) }
-- FOLLOW(RelOp)       = { id, num, (, true, false }  # FIRST(BoolPrimary)
+- FOLLOW(Cond)        = { ), ;, , }   # Cond appears in conditions, initializers, returns, and arguments
+- FOLLOW(OrExpr)      = FOLLOW(Cond) = { ), ;, , }
+- FOLLOW(OrExpr')     = FOLLOW(OrExpr) = { ), ;, , }
+- FOLLOW(AndExpr)     = { or, ), ;, , }
+- FOLLOW(AndExpr')    = FOLLOW(AndExpr) = { or, ), ;, , }
+- FOLLOW(NotExpr)     = { and, or, ), ;, , }
+- FOLLOW(RelExpr)     = FOLLOW(NotExpr) = { and, or, ), ;, , }
+- FOLLOW(RelExpr')    = FOLLOW(RelExpr) = { and, or, ), ;, , }
+- FOLLOW(BoolPrimary) = { <, >, <=, >=, ==, !=, and, or, ), ;, , }
+- FOLLOW(RelOp)       = { id, num, (, true, false, - }  # FIRST(BoolPrimary)
 
 ---
 
@@ -262,11 +266,11 @@ ReturnStmt
 - return → 36
 
 ReturnValue
-- id, num, (, true, false, not → 37
+- id, num, (, true, false, not, - → 37
 - ; (SEMICOLON) → 38
 
 Expr
-- id, num, (, true, false → 39
+- id, num, (, true, false, - → 39
 
 Expr'
 - + → 40
@@ -274,7 +278,7 @@ Expr'
 - ), ;, <, >, <=, >=, ==, !=, and, or, , → 42
 
 Term
-- id, num, (, true, false → 43
+- id, num, (, true, false, - → 43
 
 Term'
 - * → 44
@@ -288,13 +292,14 @@ Factor
 - true → 50
 - false → 51
 - ( → 52
+- - → 80
 
 FactorSuffix
 - ( → 54
 - *, /, %, +, -, ), ;, <, >, <=, >=, ==, !=, and, or, , → 53
 
 ArgList
-- id, num, (, true, false, not → 55
+- id, num, (, true, false, not, - → 55
 - ) → 56
 
 ArgList'
@@ -302,37 +307,37 @@ ArgList'
 - ) → 58
 
 Cond
-- id, num, (, not, true, false → 59
+- id, num, (, not, true, false, - → 59
 
 OrExpr
-- id, num, (, not, true, false → 60
+- id, num, (, not, true, false, - → 60
 
 OrExpr'
 - or → 61
-- ) → 62
+- ), ;, , → 62
 
 AndExpr
-- id, num, (, not, true, false → 63
+- id, num, (, not, true, false, - → 63
 
 AndExpr'
 - and → 64
-- or, ) → 65
+- or, ), ;, , → 65
 
 NotExpr
 - not → 66
-- id, num, (, true, false → 67
+- id, num, (, true, false, - → 67
 
 RelExpr
-- id, num, (, true, false → 68
+- id, num, (, true, false, - → 68
 
 RelExpr'
 - <, >, <=, >=, ==, != → 69
-- and, or, ) → 70
+- and, or, ), ;, , → 70
 
 BoolPrimary
 - true → 71
 - false → 72
-- (, id, num → 73
+- (, id, num, - → 73
 
 RelOp
 - < → 74
@@ -353,18 +358,18 @@ This compact mapping is a direct transcription of `NewParsingTable()` in `pkg/pa
 
 ## 5. Consistency / Quality Notes
 
-1. "not" inconsistency:
-   - `ReturnValue` and `ArgList` accept `not` as a valid lookahead (they map `not` → production 37 / 55). Those productions route to `Expr` (`ReturnValue → Expr`) or to `Expr` via `ArgList → Expr ...`.
-   - However, `Expr` does not include `not` in its FIRST set or parsing table entries — `NotExpr` and boolean operators live under `Cond` / `OrExpr` / `AndExpr` / `NotExpr`. In practice this means a return value or argument that begins with `not` will select the `ReturnValue` / `ArgList` entry but then attempt to parse an `Expr`, for which there is no `not`-entry in the table. That will cause a parse error for inputs like `return not ...` or `foo(not ...)` under the current table.
-   - Fix options:
-     - Extend `Expr` to include boolean operators (unify arithmetic and boolean expressions), or
-     - Change `ReturnValue` and `ArgList` to use `Cond` (or a unified `Expression`) instead of `Expr` to allow `not` and boolean operators.
+1. Unified expressions (resolved):
+   - `Cond` is the single entry point for all expressions. `VarDecl`, `Assign`, `ReturnValue`, `ArgList`, and parenthesized factors (`Factor → ( Cond )`) all route through it, so boolean operators (`not`, `and`, `or`) and comparisons are valid anywhere an expression is expected. The former `not` inconsistency (ReturnValue/ArgList accepting `not` while dispatching into `Expr`, which could not parse it) no longer exists.
+   - To keep the chain LL(1) in its new contexts, `OrExpr'`, `AndExpr'`, and `RelExpr'` have ε-entries for `;` and `,` in addition to `)`.
 
-2. Semantic actions:
+2. Unary minus:
+   - Production 80 (`Factor → - Factor @neg`) provides unary negation of variables and parenthesized expressions. The lexer still fuses `-` directly followed by a digit into a negative `num` literal in unary-allowing contexts; both paths produce the same value.
+
+3. Statement-form calls:
+   - `Assign → id @capture_stmt_id AssignSuffix ;` defers identifier resolution: `@assign` resolves the name as a variable, while `( @stmt_call_start ArgList ) @stmt_call_end` resolves it as a function and discards the return value.
+
+4. Semantic actions:
    - Productions that begin with semantic actions (e.g. `ElsePart` begins with `@jmpf`) mean the first real token for lookahead is still `else` or ε. For documentation and FIRST/FOLLOW reasoning, semantic actions are ignored.
-
-3. Suggested refactor:
-   - Introduce a unified `Expression` non-terminal that covers both arithmetic and boolean expressions with precedence. This will remove duplication and the `not` inconsistency, making parse-table entries clearer and safer.
 
 ---
 
