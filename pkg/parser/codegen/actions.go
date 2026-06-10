@@ -26,6 +26,12 @@ func (c *Codegen) saveAction() {
 	c.i++
 }
 
+// isBackpatchMarker reports whether a semantic-stack entry is a $while_/$break_
+// marker rather than a saved instruction index or operand address
+func (c *Codegen) isBackpatchMarker(s string) bool {
+	return strings.HasPrefix(s, "$while_") || strings.HasPrefix(s, "$break_")
+}
+
 // saveBreakAction saves a break action by appending a NOP instruction and pushing the index and a unique break label onto the stack
 func (c *Codegen) saveBreakAction() {
 	c.pb = append(c.pb, Instruction{OpNop, nil, nil, nil, lexer.EOF})
@@ -66,6 +72,7 @@ func (c *Codegen) jmpfBreakAction() {
 		loc, err := strconv.ParseInt(strings.TrimPrefix(location, "$break_"), 10, 64)
 		if err != nil {
 			log.Error("Invalid break label", "label", location)
+			c.popString(1)
 			continue
 		}
 
@@ -76,23 +83,31 @@ func (c *Codegen) jmpfBreakAction() {
 	c.jmpfAction()
 }
 
-// jmpAction appends an unconditional jump instruction to the program and patches the target address
+// jmpAction appends an unconditional jump instruction to the program and patches the target address.
+// $while_/$break_ markers belong to enclosing loops and are skipped (and kept on the stack)
 func (c *Codegen) jmpAction() {
-	if c.ss.Size() >= 1 {
-		location := c.top()
-		if location < len(c.pb) {
-			c.pb[location] = Instruction{Op: OpJmp, Arg1: nil, Arg2: nil, Arg3: c.i, Type: lexer.EOF}
-		}
-
-		c.pop(1)
+	j := 0
+	for j < c.ss.Size() && c.isBackpatchMarker(c.topStringMinus(j)) {
+		j++
 	}
+
+	if c.ss.Size() <= j {
+		return
+	}
+
+	location := c.topMinus(j)
+	if location < len(c.pb) {
+		c.pb[location] = Instruction{Op: OpJmp, Arg1: nil, Arg2: nil, Arg3: c.i, Type: lexer.EOF}
+	}
+
+	c.popAtOffsetEnd(j)
 }
 
 // jmpfNormalAction appends a conditional jump instruction to the program and patches the target address
 func (c *Codegen) jmpfNormalAction() {
 	j := 0
 	for c.ss.Size() >= 2 {
-		if strings.HasPrefix(c.topStringMinus(j), "$break_") || strings.HasPrefix(c.topStringMinus(j), "$while_") {
+		if c.isBackpatchMarker(c.topStringMinus(j)) {
 			j++
 			continue
 		}
@@ -110,17 +125,26 @@ func (c *Codegen) jmpfNormalAction() {
 	}
 }
 
-// jmpfAction appends a conditional jump instruction to the program and patches the target address to the next instruction
+// jmpfAction appends a conditional jump instruction to the program and patches the target address to the next instruction.
+// $while_/$break_ markers belong to enclosing loops and are skipped (and kept on the stack)
 func (c *Codegen) jmpfAction() {
-	if c.ss.Size() >= 2 {
-		location := c.top()
-		condition := c.topMinus(1)
-		if location < len(c.pb) {
-			c.pb[location] = Instruction{Op: OpJmpf, Arg1: condition, Arg2: nil, Arg3: c.i + 1, Type: lexer.EOF}
-		}
-
-		c.pop(2)
+	j := 0
+	for j < c.ss.Size() && c.isBackpatchMarker(c.topStringMinus(j)) {
+		j++
 	}
+
+	if c.ss.Size() < j+2 {
+		return
+	}
+
+	location := c.topMinus(j)
+	condition := c.topMinus(j + 1)
+	if location < len(c.pb) {
+		c.pb[location] = Instruction{Op: OpJmpf, Arg1: condition, Arg2: nil, Arg3: c.i + 1, Type: lexer.EOF}
+	}
+
+	c.popAtOffsetEnd(j)
+	c.popAtOffsetEnd(j)
 }
 
 // binaryOpAction generates code for binary operations like addition, subtraction, etc.
