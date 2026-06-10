@@ -30,6 +30,9 @@ type arm64Macos struct {
 
 	strCounter int // string literal counter
 
+	needDivZeroHandler bool // emit the division-by-zero runtime error handler
+	needModZeroHandler bool // emit the modulo-by-zero runtime error handler
+
 	pbLabels map[int]string                // PB index -> label name
 	callArgs map[int][]codegen.Instruction // PB index of OpCall -> list of OpArg instructions
 }
@@ -63,6 +66,9 @@ func (a *arm64Macos) Generate() error {
 
 	// Emit functions and main
 	a.emitMainAndFunctions()
+
+	// Emit shared runtime error handlers (e.g. division by zero) if needed
+	a.emitRuntimeErrorHandlers()
 
 	return nil
 }

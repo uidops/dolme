@@ -837,8 +837,14 @@ func (a *arm64Macos) emitBinary(instr codegen.Instruction, funcName string) {
 	case codegen.OpMul:
 		a.addText("\tmul\tX0, X0, X1")
 	case codegen.OpDiv:
+		// match the interpreter: integer division by zero is a runtime error
+		// (sdiv would silently yield 0)
+		a.needDivZeroHandler = true
+		a.addText("\tcbz\tX1, L_dolme_div_zero")
 		a.addText("\tsdiv\tX0, X0, X1")
 	case codegen.OpMod:
+		a.needModZeroHandler = true
+		a.addText("\tcbz\tX1, L_dolme_mod_zero")
 		a.addText("\tsdiv\tX2, X0, X1")
 		a.addText("\tmul\tX2, X2, X1")
 		a.addText("\tsub\tX0, X0, X2")
@@ -1288,6 +1294,36 @@ func (a *arm64Macos) storeFloatConstant(lit string) string {
 
 	a.data.WriteString(fmt.Sprintf("%s:\n\t.double\t%s\n", label, val))
 	return label
+}
+
+// emitRuntimeErrorHandlers emits shared handlers for runtime errors after all
+// program code. Each prints a message to stderr and exits with status 1,
+// mirroring the interpreter's runtime errors.
+func (a *arm64Macos) emitRuntimeErrorHandlers() {
+	emit := func(label, msg string) {
+		strLabel := label + "_str"
+		a.addCString(fmt.Sprintf("%s:", strLabel))
+		a.addCString(fmt.Sprintf("\t.asciz\t\"%s\\n\"", msg))
+
+		a.addText("")
+		a.addText(fmt.Sprintf("%s:", label))
+		a.addText("\tadrp\tx9, ___stderrp@GOTPAGE")
+		a.addText("\tldr\tx9, [x9, ___stderrp@GOTPAGEOFF]")
+		a.addText("\tldr\tx1, [x9]")
+		a.addText(fmt.Sprintf("\tadrp\tx0, %s@PAGE", strLabel))
+		a.addText(fmt.Sprintf("\tadd\tx0, x0, %s@PAGEOFF", strLabel))
+		a.addText("\tbl\t_fputs")
+		a.addText("\tmov\tX0, #1")
+		a.addText("\tbl\t_exit")
+	}
+
+	if a.needDivZeroHandler {
+		emit("L_dolme_div_zero", "division by zero")
+	}
+
+	if a.needModZeroHandler {
+		emit("L_dolme_mod_zero", "modulo by zero")
+	}
 }
 
 // ensurePrintfIntFormat ensures we have a "%lld\n" C-format string available and returns its label.
