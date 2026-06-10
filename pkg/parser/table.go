@@ -45,11 +45,11 @@ var grammer = []Production{
 	{LHS: "Stmt", RHS: []string{"ContinueStmt"}}, // 23
 	{LHS: "Stmt", RHS: []string{"BreakStmt"}},    // 24
 
-	{LHS: "VarDecl", RHS: []string{"let", "id", "@capture_decl_var", ":", "Type", "@capture_type", "=", "Expr", ";", "@define"}}, // 25
+	{LHS: "VarDecl", RHS: []string{"let", "id", "@capture_decl_var", ":", "Type", "@capture_type", "=", "Cond", ";", "@define"}}, // 25
 
 	{LHS: "Assign", RHS: []string{"id", "@capture_stmt_id", "AssignSuffix", ";"}}, // 26
 
-	{LHS: "AssignSuffix", RHS: []string{"=", "Expr", "@assign"}},                                    // 27
+	{LHS: "AssignSuffix", RHS: []string{"=", "Cond", "@assign"}},                                       // 27
 	{LHS: "AssignSuffix", RHS: []string{"(", "@stmt_call_start", "ArgList", ")", "@stmt_call_end"}}, // 28
 
 	{LHS: "IfStmt", RHS: []string{"if", "(", "Cond", ")", "@save", "{", "StmtList", "}", "ElsePart"}}, // 29
@@ -67,7 +67,7 @@ var grammer = []Production{
 
 	{LHS: "ReturnStmt", RHS: []string{"return", "ReturnValue", ";", "@return"}}, // 36
 
-	{LHS: "ReturnValue", RHS: []string{"Expr"}}, // 37
+	{LHS: "ReturnValue", RHS: []string{"Cond"}}, // 37
 	{LHS: "ReturnValue", RHS: []string{"ε"}},    // 38
 
 	{LHS: "Expr", RHS: []string{"Term", "Expr'"}}, // 39
@@ -88,15 +88,15 @@ var grammer = []Production{
 	{LHS: "Factor", RHS: []string{"num", "@push"}},       // 49
 	{LHS: "Factor", RHS: []string{"true", "@push"}},      // 50
 	{LHS: "Factor", RHS: []string{"false", "@push"}},     // 51
-	{LHS: "Factor", RHS: []string{"(", "Expr", ")"}},     // 52
+	{LHS: "Factor", RHS: []string{"(", "Cond", ")"}},     // 52
 
 	{LHS: "FactorSuffix", RHS: []string{"@load"}},                                         // 53
 	{LHS: "FactorSuffix", RHS: []string{"@call_start", "(", "ArgList", ")", "@call_end"}}, // 54
 
-	{LHS: "ArgList", RHS: []string{"Expr", "@arg", "ArgList'"}}, // 55
+	{LHS: "ArgList", RHS: []string{"Cond", "@arg", "ArgList'"}}, // 55
 	{LHS: "ArgList", RHS: []string{"ε"}},                        // 56
 
-	{LHS: "ArgList'", RHS: []string{",", "Expr", "@arg", "ArgList'"}}, // 57
+	{LHS: "ArgList'", RHS: []string{",", "Cond", "@arg", "ArgList'"}}, // 57
 	{LHS: "ArgList'", RHS: []string{"ε"}},                             // 58
 
 	{LHS: "Cond", RHS: []string{"OrExpr"}}, // 59
@@ -389,8 +389,10 @@ func NewParsingTable() ParsingTable {
 		},
 
 		"OrExpr'": {
-			lexer.OR:     grammer[61],
-			lexer.RPAREN: grammer[62],
+			lexer.OR:        grammer[61],
+			lexer.RPAREN:    grammer[62],
+			lexer.SEMICOLON: grammer[62],
+			lexer.COMMA:     grammer[62],
 		},
 
 		"AndExpr": {
@@ -403,9 +405,11 @@ func NewParsingTable() ParsingTable {
 		},
 
 		"AndExpr'": {
-			lexer.AND:    grammer[64],
-			lexer.OR:     grammer[65],
-			lexer.RPAREN: grammer[65],
+			lexer.AND:       grammer[64],
+			lexer.OR:        grammer[65],
+			lexer.RPAREN:    grammer[65],
+			lexer.SEMICOLON: grammer[65],
+			lexer.COMMA:     grammer[65],
 		},
 
 		"NotExpr": {
@@ -426,15 +430,17 @@ func NewParsingTable() ParsingTable {
 		},
 
 		"RelExpr'": {
-			lexer.LT:     grammer[69],
-			lexer.GT:     grammer[69],
-			lexer.LE:     grammer[69],
-			lexer.GE:     grammer[69],
-			lexer.EQ:     grammer[69],
-			lexer.NE:     grammer[69],
-			lexer.AND:    grammer[70],
-			lexer.OR:     grammer[70],
-			lexer.RPAREN: grammer[70],
+			lexer.LT:        grammer[69],
+			lexer.GT:        grammer[69],
+			lexer.LE:        grammer[69],
+			lexer.GE:        grammer[69],
+			lexer.EQ:        grammer[69],
+			lexer.NE:        grammer[69],
+			lexer.AND:       grammer[70],
+			lexer.OR:        grammer[70],
+			lexer.RPAREN:    grammer[70],
+			lexer.SEMICOLON: grammer[70],
+			lexer.COMMA:     grammer[70],
 		},
 
 		"BoolPrimary": {
