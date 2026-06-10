@@ -507,6 +507,19 @@ func (c *Codegen) callEndAction() {
 func (c *Codegen) argAction() {
 	if c.ss.Size() >= 1 {
 		arg := c.top()
+
+		// Snapshot global variables into a temp so the argument keeps the value
+		// it had at evaluation time, even if a later argument contains a call
+		// that mutates the global before this call executes.
+		if arg >= GlobalAddrBase && arg < TempAddrBase {
+			argType := c.GetVariableType(arg)
+			t := c.getTemp()
+			c.setVariableType(t, argType)
+			c.pb = append(c.pb, Instruction{Op: OpAssign, Arg1: arg, Arg2: nil, Arg3: t, Type: argType})
+			c.i++
+			arg = t
+		}
+
 		c.pb = append(c.pb, Instruction{Op: OpArg, Arg1: arg, Arg2: c.argsCounter, Arg3: nil, Type: c.GetVariableType(arg)})
 		c.argsCounter += 1
 		c.pop(1)
