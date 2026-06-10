@@ -172,7 +172,9 @@ func (c *Codegen) binaryOpAction(op Operation) {
 		t := c.getTemp()
 
 		newType := lexer.FLOAT
-		if c.GetVariableType(op1) == lexer.INT && c.GetVariableType(op2) == lexer.INT {
+		if op == OpAnd || op == OpOr {
+			newType = lexer.BOOL
+		} else if c.GetVariableType(op1) == lexer.INT && c.GetVariableType(op2) == lexer.INT {
 			newType = lexer.INT
 		}
 
@@ -326,7 +328,9 @@ func (c *Codegen) notAction() {
 		op1 := c.top()
 		temp := c.getTemp()
 
-		c.pb = append(c.pb, Instruction{Op: OpNot, Arg1: op1, Arg2: nil, Arg3: temp, Type: lexer.EOF})
+		c.setVariableType(temp, lexer.BOOL)
+
+		c.pb = append(c.pb, Instruction{Op: OpNot, Arg1: op1, Arg2: nil, Arg3: temp, Type: lexer.BOOL})
 		c.pop(1)
 		c.push(temp)
 		c.i++
