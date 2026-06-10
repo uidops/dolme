@@ -184,21 +184,17 @@ func (c *Codegen) declareVariable(name string, addr int) {
 	}
 }
 
-// isVariableDeclared checks if a variable is declared in the appropriate scope
+// isVariableDeclared checks if a variable is declared in the current scope.
+// Only the scope a new declaration would land in is checked, so a function
+// local is allowed to shadow a global with the same name.
 func (c *Codegen) isVariableDeclared(name string) bool {
-	// check function scope first
 	if c.inFunction {
-		if _, exists := c.functionScope[name]; exists {
-			return true
-		}
+		_, exists := c.functionScope[name]
+		return exists
 	}
 
-	// check global scope
-	if _, exists := c.symbolTable[name]; exists {
-		return true
-	}
-
-	return false
+	_, exists := c.symbolTable[name]
+	return exists
 }
 
 // getVariableAddress retrieves the address of a variable from the appropriate scope
