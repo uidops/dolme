@@ -407,7 +407,7 @@ func (a *arm64Macos) emitFunctions() {
 						if strings.HasPrefix(v, "#") {
 							val := v[1:]
 							val = normalizeImmediate(val)
-							a.addText(fmt.Sprintf("\tmov\tX0, #%s", val))
+							a.addText(fmt.Sprintf("\tldr\tX0, =%s", val))
 						}
 					case int:
 						switch in.Type {
@@ -525,7 +525,7 @@ func (a *arm64Macos) emitMain() {
 					if strings.HasPrefix(v, "#") {
 						val := v[1:]
 						val = normalizeImmediate(val)
-						a.addText(fmt.Sprintf("\tmov\tX0, #%s", val))
+						a.addText(fmt.Sprintf("\tldr\tX0, =%s", val))
 					}
 				case int:
 					a.addText(fmt.Sprintf("\tldr\tX0, %s", a.addrRef(v, "")))
@@ -715,7 +715,7 @@ func (a *arm64Macos) emitAssign(instr codegen.Instruction, funcName string) {
 			}
 
 			// numeric immediates - use mov
-			a.addText(fmt.Sprintf("\tmov\tX0, #%s", val))
+			a.addText(fmt.Sprintf("\tldr\tX0, =%s", val))
 		} else {
 			// treated as address string? fallback: no-op
 			a.addText(fmt.Sprintf("\t// assign source string (unknown): %s", v))
@@ -915,7 +915,7 @@ func (a *arm64Macos) loadOperandToReg(reg string, op any, funcName string) {
 	case string:
 		if strings.HasPrefix(v, "#") {
 			val := normalizeImmediate(v[1:])
-			a.addText(fmt.Sprintf("\tmov\t%s, #%s", reg, val))
+			a.addText(fmt.Sprintf("\tldr\t%s, =%s", reg, val))
 			return
 		}
 
@@ -951,7 +951,7 @@ func (a *arm64Macos) loadOperandToFPReg(reg string, op any, funcName string) {
 		}
 
 		// otherwise treat as integer immediate -> mov into x9 then convert.
-		a.addText(fmt.Sprintf("\tmov\tx9, #%s", val))
+		a.addText(fmt.Sprintf("\tldr\tx9, =%s", val))
 		a.addText(fmt.Sprintf("\tscvtf\t%s, x9", reg))
 		return
 
@@ -992,7 +992,7 @@ func (a *arm64Macos) loadOperandToBoolReg(reg string, op any, funcName string) {
 			return
 		}
 
-		a.addText(fmt.Sprintf("\tmov\t%s, #%s", reg, val))
+		a.addText(fmt.Sprintf("\tldr\t%s, =%s", reg, val))
 		a.addText(fmt.Sprintf("\tcmp\t%s, #0", reg))
 		a.addText(fmt.Sprintf("\tcset\t%s, ne", reg))
 	case int:
@@ -1044,7 +1044,7 @@ func (a *arm64Macos) emitPrint(instr codegen.Instruction, funcName string) {
 				a.addText(fmt.Sprintf("\tadrp\tX0, %s@PAGE", fmtLabel))
 				a.addText(fmt.Sprintf("\tadd\tX0, X0, %s@PAGEOFF", fmtLabel))
 				// Move immediate into X1 and save into caller save area [SP,#0]
-				a.addText(fmt.Sprintf("\tmov\tX1, #%s", val))
+				a.addText(fmt.Sprintf("\tldr\tX1, =%s", val))
 				a.addText("\tsub\tSP, SP, #64")
 				a.addText("\tstr\tX1, [SP, #0]")
 				// Call printf
@@ -1153,7 +1153,7 @@ func (a *arm64Macos) emitCallAtIndex(instr codegen.Instruction, idx int, funcNam
 						a.addText(fmt.Sprintf("\tadd\tx9, x9, %s@PAGEOFF", label))
 						a.addText("\tldr\td0, [x9]")
 					} else {
-						a.addText(fmt.Sprintf("\tmov\tx9, #%s", val))
+						a.addText(fmt.Sprintf("\tldr\tx9, =%s", val))
 						a.addText("\tscvtf\td0, x9")
 					}
 				} else {
@@ -1181,7 +1181,7 @@ func (a *arm64Macos) emitCallAtIndex(instr codegen.Instruction, idx int, funcNam
 			case string:
 				if strings.HasPrefix(v, "#") {
 					val := normalizeImmediate(v[1:])
-					a.addText(fmt.Sprintf("\tmov\tx0, #%s", val))
+					a.addText(fmt.Sprintf("\tldr\tx0, =%s", val))
 				} else {
 					log.Error("unexpected arg string", "arg", i, "func", funcNameStr)
 					a.addText("\tmov\tx0, #0")
