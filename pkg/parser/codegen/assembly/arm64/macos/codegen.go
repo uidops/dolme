@@ -1091,6 +1091,9 @@ func (a *arm64Macos) emitPrint(instr codegen.Instruction, funcName string) {
 			a.addText(fmt.Sprintf("\tadd\tX0, X0, %s@PAGEOFF", falseLabel))
 			a.addText(fmt.Sprintf("%s:", doneLabel))
 			a.addText("\tbl\t_puts")
+		} else if varType == lexer.STRING {
+			a.addText(fmt.Sprintf("\tldr\tX0, %s", a.addrRef(v, funcName)))
+			a.addText("\tbl\t_puts")
 		} else {
 			fmtLabel := a.ensurePrintfIntFormat()
 			a.addText("\t// prepare register-save / vararg area for printf (int)")
@@ -1181,7 +1184,13 @@ func (a *arm64Macos) emitCallAtIndex(instr codegen.Instruction, idx int, funcNam
 			case string:
 				if strings.HasPrefix(v, "#") {
 					val := normalizeImmediate(v[1:])
-					a.addText(fmt.Sprintf("\tldr\tx0, =%s", val))
+					if strings.HasPrefix(val, "\"") || op.Type == lexer.STRING {
+						label := a.storeCString(val)
+						a.addText(fmt.Sprintf("\tadrp\tx0, %s@PAGE", label))
+						a.addText(fmt.Sprintf("\tadd\tx0, x0, %s@PAGEOFF", label))
+					} else {
+						a.addText(fmt.Sprintf("\tldr\tx0, =%s", val))
+					}
 				} else {
 					log.Error("unexpected arg string", "arg", i, "func", funcNameStr)
 					a.addText("\tmov\tx0, #0")

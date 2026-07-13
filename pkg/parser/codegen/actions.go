@@ -206,7 +206,9 @@ func (c *Codegen) pushAction() {
 
 	value_ := value[1:]
 	type_ := lexer.EOF
-	if value_ == "true" || value_ == "false" {
+	if c.currentToken.Type == lexer.STRING {
+		type_ = lexer.STRING
+	} else if value_ == "true" || value_ == "false" {
 		type_ = lexer.BOOL
 	} else if strings.Contains(value_, ".") {
 		type_ = lexer.FLOAT
