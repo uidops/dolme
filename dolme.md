@@ -46,7 +46,7 @@ WhileStmt → while @label_while ( Cond ) @save { StmtList } @jmpf_break @jmp_no
 ContinueStmt → continue ; @continue                       (33)
 BreakStmt → break ; @save_break                           (34)
 
-PrintStmt → print ( id @load ) ; @print                   (35)
+PrintStmt → print ( Cond ) ; @print                       (35)
 
 ReturnStmt → return ReturnValue ; @return                 (36)
 ReturnValue → Cond | @return_void ε                       (37,38)
@@ -58,8 +58,8 @@ Term → Factor Term'                                       (43)
 Term' → * Factor Term' @mul | / Factor Term' @div | % Factor Term' @mod | ε
                                                          (44,45,46,47)
 
-Factor → id FactorSuffix | num @push | true @push | false @push | ( Cond ) | - Factor @neg
-                                                         (48..52, 80)
+Factor → id FactorSuffix | num @push | true @push | false @push | ( Cond ) | - Factor @neg | string @push
+                                                         (48..52, 80, 81)
 
 FactorSuffix → @load | @call_start ( ArgList ) @call_end (53,54)
 
@@ -115,24 +115,24 @@ Notes:
 - FIRST(BreakStmt)    = { break }
 - FIRST(PrintStmt)    = { print }
 - FIRST(ReturnStmt)   = { return }
-- FIRST(ReturnValue)  = { id, num, (, true, false, not, -, ε }
-- FIRST(Expr)         = { id, num, (, true, false, - }
+- FIRST(ReturnValue)  = { id, num, string, (, true, false, not, -, ε }
+- FIRST(Expr)         = { id, num, string, (, true, false, - }
 - FIRST(Expr')        = { +, -, ε }
-- FIRST(Term)         = { id, num, (, true, false, - }
+- FIRST(Term)         = { id, num, string, (, true, false, - }
 - FIRST(Term')        = { *, /, %, ε }
-- FIRST(Factor)       = { id, num, true, false, (, - }
+- FIRST(Factor)       = { id, num, string, true, false, (, - }
 - FIRST(FactorSuffix) = { (, ε }        # '(' → call; ε → @load
-- FIRST(ArgList)      = { id, num, (, true, false, not, -, ε }
+- FIRST(ArgList)      = { id, num, string, (, true, false, not, -, ε }
 - FIRST(ArgList')     = { ,, ε }
-- FIRST(Cond)         = { not, id, num, (, true, false, - }
-- FIRST(OrExpr)       = { not, id, num, (, true, false, - }
+- FIRST(Cond)         = { not, id, num, string, (, true, false, - }
+- FIRST(OrExpr)       = { not, id, num, string, (, true, false, - }
 - FIRST(OrExpr')      = { or, ε }
-- FIRST(AndExpr)      = { not, id, num, (, true, false, - }
+- FIRST(AndExpr)      = { not, id, num, string, (, true, false, - }
 - FIRST(AndExpr')     = { and, ε }
-- FIRST(NotExpr)      = { not, id, num, (, true, false, - }
-- FIRST(RelExpr)      = { id, num, (, true, false, - }
+- FIRST(NotExpr)      = { not, id, num, string, (, true, false, - }
+- FIRST(RelExpr)      = { id, num, string, (, true, false, - }
 - FIRST(RelExpr')     = { <, >, <=, >=, ==, !=, ε }
-- FIRST(BoolPrimary)  = { true, false, id, num, (, - }
+- FIRST(BoolPrimary)  = { true, false, string, id, num, (, - }
 - FIRST(RelOp)        = { <, >, <=, >=, ==, != }
 
 Implementation notes:
@@ -266,11 +266,11 @@ ReturnStmt
 - return → 36
 
 ReturnValue
-- id, num, (, true, false, not, - → 37
+- id, num, string, (, true, false, not, - → 37
 - ; (SEMICOLON) → 38
 
 Expr
-- id, num, (, true, false, - → 39
+- id, num, string, (, true, false, - → 39
 
 Expr'
 - + → 40
@@ -278,7 +278,7 @@ Expr'
 - ), ;, <, >, <=, >=, ==, !=, and, or, , → 42
 
 Term
-- id, num, (, true, false, - → 43
+- id, num, string, (, true, false, - → 43
 
 Term'
 - * → 44
@@ -293,13 +293,14 @@ Factor
 - false → 51
 - ( → 52
 - - → 80
+- string → 81
 
 FactorSuffix
 - ( → 54
 - *, /, %, +, -, ), ;, <, >, <=, >=, ==, !=, and, or, , → 53
 
 ArgList
-- id, num, (, true, false, not, - → 55
+- id, num, string, (, true, false, not, - → 55
 - ) → 56
 
 ArgList'
@@ -307,17 +308,17 @@ ArgList'
 - ) → 58
 
 Cond
-- id, num, (, not, true, false, - → 59
+- id, num, string, (, not, true, false, - → 59
 
 OrExpr
-- id, num, (, not, true, false, - → 60
+- id, num, string, (, not, true, false, - → 60
 
 OrExpr'
 - or → 61
 - ), ;, , → 62
 
 AndExpr
-- id, num, (, not, true, false, - → 63
+- id, num, string, (, not, true, false, - → 63
 
 AndExpr'
 - and → 64
@@ -325,10 +326,10 @@ AndExpr'
 
 NotExpr
 - not → 66
-- id, num, (, true, false, - → 67
+- id, num, string, (, true, false, - → 67
 
 RelExpr
-- id, num, (, true, false, - → 68
+- id, num, string, (, true, false, - → 68
 
 RelExpr'
 - <, >, <=, >=, ==, != → 69
@@ -337,7 +338,7 @@ RelExpr'
 BoolPrimary
 - true → 71
 - false → 72
-- (, id, num, - → 73
+- (, id, num, string, - → 73
 
 RelOp
 - < → 74
