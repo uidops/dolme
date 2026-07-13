@@ -33,6 +33,7 @@ type Codegen struct {
 	functionScope    map[string]int             // Function scope symbol table
 	typeTable        map[int]lexer.TokenType    // Type table mapping addresses to types
 	functionReturns  map[string]lexer.TokenType // Function return types
+	functionParams   map[string][]lexer.TokenType // Function parameter types
 	errors           []string                   // List of semantic errors
 }
 
@@ -54,6 +55,7 @@ func NewCodegen() *Codegen {
 		functionScope:    make(map[string]int),
 		typeTable:        make(map[int]lexer.TokenType),
 		functionReturns:  make(map[string]lexer.TokenType),
+		functionParams:   make(map[string][]lexer.TokenType),
 	}
 }
 

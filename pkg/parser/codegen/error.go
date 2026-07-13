@@ -40,6 +40,18 @@ func (c *Codegen) addRedeclarationError(varName string, pos lexer.Position) {
 	c.addError(msg)
 }
 
+func (c *Codegen) addArgumentCountMismatchError(funcName string, expected, found int, pos lexer.Position) {
+	msg := color.RedText("Argument count mismatch") + " in call to `" + color.BlueText(funcName) + "`: expected " + color.BlueText(fmt.Sprintf("%d", expected)) + ", found " + color.BlueText(fmt.Sprintf("%d", found))
+	msg += " at " + color.YellowText(fmt.Sprintf("Line: %d, Column %d", pos.Line, pos.Column))
+	c.addError(msg)
+}
+
+func (c *Codegen) addArgumentTypeMismatchError(funcName string, argIdx int, expected, found lexer.TokenType, pos lexer.Position) {
+	msg := color.RedText("Argument type mismatch") + " in call to `" + color.BlueText(funcName) + "` at argument " + color.BlueText(fmt.Sprintf("%d", argIdx)) + ": expected " + color.BlueText(fmt.Sprintf("%v", expected)) + ", found " + color.BlueText(fmt.Sprintf("%v", found))
+	msg += " at " + color.YellowText(fmt.Sprintf("Line: %d, Column %d", pos.Line, pos.Column))
+	c.addError(msg)
+}
+
 func (c *Codegen) GetErrors() []string {
 	return c.errors
 }

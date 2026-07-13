@@ -415,13 +415,16 @@ func (c *Codegen) funcEndAction() {
 
 // paramAction handles function parameter declarations
 func (c *Codegen) paramAction() {
-	if c.ss.Size() >= 2 {
+	if c.ss.Size() >= 3 {
 		typeStr := c.topString()
 		paramName := c.topStringMinus(1)
+		funcName := c.topStringMinus(2)
 		paramAddr := c.getLocalVariable()
 
 		c.declareVariable(paramName, paramAddr)
 		c.setVariableType(paramAddr, lexer.Keywords[typeStr])
+
+		c.functionParams[funcName] = append(c.functionParams[funcName], lexer.Keywords[typeStr])
 
 		c.pb = append(c.pb, Instruction{Op: OpParam, Arg1: paramAddr, Arg2: c.paramCounter, Arg3: nil, Type: lexer.Keywords[typeStr]})
 		c.paramCounter += 1
@@ -445,6 +448,68 @@ func (c *Codegen) stmtCallStartAction() {
 	c.argsCounter = 0
 }
 
+// collectCallArgTypes scans the program block backwards to retrieve the types of arguments for a call
+func (c *Codegen) collectCallArgTypes(argCount int) []lexer.TokenType {
+	types := make([]lexer.TokenType, argCount)
+	found := 0
+	skipArgs := 0
+
+	for j := len(c.pb) - 1; j >= 0; j-- {
+		if argCount == 0 || found == argCount {
+			break
+		}
+
+		prev := c.pb[j]
+		if prev.Op == OpCall {
+			if n, ok := prev.Arg2.(int); ok {
+				skipArgs += n
+			}
+
+			continue
+		}
+
+		if prev.Op != OpArg {
+			continue
+		}
+
+		if skipArgs > 0 {
+			skipArgs--
+			continue
+		}
+
+		if pos, ok := prev.Arg2.(int); ok {
+			if pos >= 0 && pos < argCount && types[pos] == 0 {
+				types[pos] = prev.Type
+				found++
+			}
+		}
+	}
+
+	return types
+}
+
+// validateCall checks that the number and types of arguments match the function declaration
+func (c *Codegen) validateCall(funcName string, argCount int, pos lexer.Position) {
+	expectedParams, ok := c.functionParams[funcName]
+	if !ok {
+		return
+	}
+
+	if len(expectedParams) != argCount {
+		c.addArgumentCountMismatchError(funcName, len(expectedParams), argCount, pos)
+		return
+	}
+
+	actualTypes := c.collectCallArgTypes(argCount)
+	for i, expectedType := range expectedParams {
+		actualType := actualTypes[i]
+		// tolerate int-to-float widening
+		if expectedType != actualType && !(expectedType == lexer.FLOAT && actualType == lexer.INT) {
+			c.addArgumentTypeMismatchError(funcName, i, expectedType, actualType, pos)
+		}
+	}
+}
+
 // stmtCallEndAction finalizes a statement-form function call. Unlike
 // callEndAction, the return value is discarded instead of pushed.
 func (c *Codegen) stmtCallEndAction() {
@@ -456,6 +521,8 @@ func (c *Codegen) stmtCallEndAction() {
 		ret, ok := c.functionReturns[funcName]
 		if !ok {
 			c.addUndefinedFunctionError(funcName, c.stmtIDToken.Pos)
+		} else {
+			c.validateCall(funcName, argCount, c.stmtIDToken.Pos)
 		}
 
 		c.setVariableType(returnTemp, ret)
@@ -484,6 +551,8 @@ func (c *Codegen) callEndAction() {
 		ret, ok := c.functionReturns[funcName]
 		if !ok {
 			c.addUndefinedFunctionError(funcName, c.currentToken.Pos)
+		} else {
+			c.validateCall(funcName, argCount, c.currentToken.Pos)
 		}
 
 		c.setVariableType(returnTemp, ret)
